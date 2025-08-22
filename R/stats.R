@@ -367,9 +367,9 @@ fold_change <- function(object, group, assay.type = NULL) {
                                        group, data, groups)
   results_df <- do.call(rbind, results_df)
   # Create comparison labels for result column names
-  comp_labels <- groups %>%
-    t() %>%
-    as.data.frame() %>%
+  comp_labels <- groups |>
+    t() |>
+    as.data.frame() |>
     tidyr::unite("Comparison", "V2", "V1", sep = "_vs_")
   comp_labels <- paste0(comp_labels[, 1], "_FC")
   results_df <- data.frame(features, results_df, stringsAsFactors = FALSE)
@@ -395,7 +395,7 @@ fold_change <- function(object, group, assay.type = NULL) {
       } else {
         id_tmp <- data1[, id]
         cor_tmp <- data.frame(id_var = id_tmp, x_var = data1[, x_tmp],
-                              y_var = data2[, y_tmp]) %>%
+                              y_var = data2[, y_tmp]) |>
         rmcorr::rmcorr(participant = .$id_var, measure1 = .$x_var,
                        measure2 = .$y_var, dataset = .)
         cor_tmp <- list(estimate = cor_tmp$r, p.value = cor_tmp$p)
@@ -563,8 +563,8 @@ perform_correlation_tests <- function(object, x, y = x, id = NULL,
     # If the same variable is present in x and y, the correlation would be 
     # computed twice. This makes sure only unique combinations are treated.
     if (identical(x, y)) {
-      var_pairs <- utils::combn(x, 2) %>%
-        t() %>%
+      var_pairs <- utils::combn(x, 2) |>
+        t() |>
         data.frame(stringsAsFactors = FALSE)
       colnames(var_pairs) <- c("x", "y")
       # Add correlations of all variables with themselves (useful for plotting)
@@ -650,8 +650,8 @@ perform_auc <- function(object, time, subject, group, assay.type = NULL) {
   data <- combined_data(object, from)
 
   # Create new pheno data, only one row per subject and group
-  pheno_data <- data[, c(subject, group)] %>%
-    dplyr::distinct() %>%
+  pheno_data <- data[, c(subject, group)] |>
+    dplyr::distinct() |>
     tidyr::unite("Sample_ID", subject, group, remove = FALSE)
   # QC and Injection_order columns to pass validObject check
   pheno_data$QC <- "Sample"
@@ -666,7 +666,7 @@ perform_auc <- function(object, time, subject, group, assay.type = NULL) {
   # Construct new SummarizedExperiment object (with all modes together)
   new_object <- SummarizedExperiment(assays = aucs, 
                                      rowData = rowData(object),
-                                     colData = pheno_data) %>%
+                                     colData = pheno_data) |>
     merge_objects()
 
   log_text("AUC computation finished")
@@ -693,15 +693,15 @@ perform_auc <- function(object, time, subject, group, assay.type = NULL) {
 # Some statistical tests may fail for some features, due to e.g. missing values.
 .fill_results <- function(results_df, features) {
   # Add NA rows for features where the test failed
-  results_df <- results_df %>% dplyr::select("Feature_ID", dplyr::everything())
+  results_df <- results_df |> dplyr::select("Feature_ID", dplyr::everything())
   missing_features <- setdiff(features, results_df$Feature_ID)
   fill_nas <- matrix(NA, nrow = length(missing_features), 
-                     ncol = ncol(results_df) - 1) %>%
+                     ncol = ncol(results_df) - 1) |>
     as.data.frame()
   results_fill <- data.frame(Feature_ID = missing_features, fill_nas)
   rownames(results_fill) <- missing_features
   colnames(results_fill) <- colnames(results_df)
-  results_df <- rbind(results_df, results_fill) %>% as.data.frame()
+  results_df <- rbind(results_df, results_fill) |> as.data.frame()
   rownames(results_df) <- results_df$Feature_ID
   # Set Feature ID to the original order
   results_df <- results_df[features, ]
@@ -813,12 +813,12 @@ perform_lm <- function(object, formula_char, all_features = FALSE,
       confints <- data.frame(Variable = rownames(confints), confints,
                              stringsAsFactors = FALSE)
 
-      result_row <- dplyr::left_join(coefs, confints, by = "Variable") %>%
+      result_row <- dplyr::left_join(coefs, confints, by = "Variable") |>
         dplyr::rename("Std_Error" = "Std..Error", "t_value" = "t.value",
                       "P" = "Pr...t..", "LCI95" = "X2.5..", 
-                      "UCI95" = "X97.5..") %>%
-        tidyr::gather("Metric", "Value", -"Variable") %>%
-        tidyr::unite("Column", "Variable", "Metric", sep = "_") %>%
+                      "UCI95" = "X97.5..") |>
+        tidyr::gather("Metric", "Value", -"Variable") |>
+        tidyr::unite("Column", "Variable", "Metric", sep = "_") |>
         tidyr::spread("Column", "Value")
       # Add R2 statistics and feature ID
       result_row$R2 <- summary(fit)$r.squared
@@ -836,7 +836,7 @@ perform_lm <- function(object, formula_char, all_features = FALSE,
                     colnames(results_df)[grep("P$", colnames(results_df))])
   statistics <- c("Estimate", "LCI95", "UCI95", 
                   "Std_Error", "t_value", "P", "P_FDR")
-  col_order <- expand.grid(statistics, variables, stringsAsFactors = FALSE) %>%
+  col_order <- expand.grid(statistics, variables, stringsAsFactors = FALSE) |>
     tidyr::unite("Column", "Var2", "Var1")
   col_order <- c("Feature_ID", col_order$Column, c("R2", "Adj_R2"))
 
@@ -985,12 +985,12 @@ perform_logistic <- function(object, formula_char, all_features = FALSE,
       confints <- data.frame(Variable = rownames(confints), confints,
                              stringsAsFactors = FALSE)
 
-      result_row <- dplyr::left_join(coefs, confints, by = "Variable") %>%
+      result_row <- dplyr::left_join(coefs, confints, by = "Variable") |>
         dplyr::rename("Std_Error" = "Std..Error", "z_value" = "z.value",
                       "P" = "Pr...z..", "LCI95" = "X2.5..", 
-                      "UCI95" = "X97.5..") %>%
-        tidyr::gather("Metric", "Value", -"Variable") %>%
-        tidyr::unite("Column", "Variable", "Metric", sep = "_") %>%
+                      "UCI95" = "X97.5..") |>
+        tidyr::gather("Metric", "Value", -"Variable") |>
+        tidyr::unite("Column", "Variable", "Metric", sep = "_") |>
         tidyr::spread("Column", "Value")
       result_row$Feature_ID <- feature
     }
@@ -1005,7 +1005,7 @@ perform_logistic <- function(object, formula_char, all_features = FALSE,
                     colnames(results_df)[grep("P$", colnames(results_df))])
   statistics <- c("Estimate", "LCI95", "UCI95", "Std_Error", 
                   "z_value", "P", "P_FDR")
-  col_order <- expand.grid(statistics, variables, stringsAsFactors = FALSE) %>%
+  col_order <- expand.grid(statistics, variables, stringsAsFactors = FALSE) |>
     tidyr::unite("Column", "Var2", "Var1")
   col_order <- c("Feature_ID", col_order$Column)
   results_df <- results_df[col_order]
@@ -1057,12 +1057,12 @@ perform_logistic <- function(object, formula_char, all_features = FALSE,
     )
 
     # Gather coefficients and CIs to one data frame row
-    result_row <- dplyr::left_join(coefs, confints, by = "Variable") %>%
+    result_row <- dplyr::left_join(coefs, confints, by = "Variable") |>
       dplyr::rename("Std_Error" = "Std..Error", "t_value" = "t.value",
                     "P" = "Pr...t..", "LCI95" = "X2.5..", 
-                    "UCI95" = "X97.5..") %>%
-      tidyr::gather("Metric", "Value", -"Variable") %>%
-      tidyr::unite("Column", "Variable", "Metric", sep = "_") %>%
+                    "UCI95" = "X97.5..") |>
+      tidyr::gather("Metric", "Value", -"Variable") |>
+      tidyr::unite("Column", "Variable", "Metric", sep = "_") |>
       tidyr::spread("Column", "Value")
     # Add R2 statistics
     result_row$Marginal_R2 <- NA
@@ -1084,22 +1084,22 @@ perform_logistic <- function(object, formula_char, all_features = FALSE,
     tryCatch(
       {
         r_tests <- as.data.frame(lmerTest::ranova(fit))[-1, c(4, 6)]
-        r_tests$Variable <- rownames(r_tests) %>%
-          gsub("[(]1 [|] ", "", .) %>%
+        r_tests$Variable <- rownames(r_tests) |>
+          gsub("[(]1 [|] ", "", .) |>
           gsub("[)]", "", .)
         # Get confidence intervals for the SD of the random effects
-        confints$Variable <- confints$Variable %>%
+        confints$Variable <- confints$Variable |>
           gsub("sd_[(]Intercept[)][|]", "", .)
         # Get standard deviations of the random effects
         r_variances <- as.data.frame(summary(fit)$varcor)[c("grp", "sdcor")]
         # Join all the information together
         r_result_row <- dplyr::inner_join(r_variances, confints, 
-                                          by = c("grp" = "Variable")) %>%
-          dplyr::left_join(r_tests, by = c("grp" = "Variable")) %>%
+                                          by = c("grp" = "Variable")) |>
+          dplyr::left_join(r_tests, by = c("grp" = "Variable")) |>
           dplyr::rename(SD = "sdcor", "LCI95" = "X2.5..", "UCI95" = "X97.5..",
-                        "P" = "Pr(>Chisq)") %>%
-          tidyr::gather("Metric", "Value", "-grp") %>%
-          tidyr::unite("Column", "grp", "Metric", sep = "_") %>%
+                        "P" = "Pr(>Chisq)") |>
+          tidyr::gather("Metric", "Value", "-grp") |>
+          tidyr::unite("Column", "grp", "Metric", sep = "_") |>
           tidyr::spread("Column", "Value")
         result_row <- cbind(result_row, r_result_row)
       },
@@ -1186,7 +1186,7 @@ perform_lmer <- function(object, formula_char, all_features = FALSE,
   statistics <- c("Estimate", "LCI95", "UCI95", "Std_Error",
                   "t_value", "P", "P_FDR")
   col_order <- expand.grid(statistics, fixed_effects, 
-                           stringsAsFactors = FALSE) %>%
+                           stringsAsFactors = FALSE) |>
     tidyr::unite("Column", "Var2", "Var1")
   col_order <- c("Feature_ID", col_order$Column, 
                  c("Marginal_R2", "Conditional_R2"))
@@ -1196,7 +1196,7 @@ perform_lmer <- function(object, formula_char, all_features = FALSE,
       gsub("_SD$", "", colnames(results_df)[grep("SD$", colnames(results_df))])
     statistics <- c("SD", "LCI95", "UCI95", "LRT", "P", "P_FDR")
     random_effect_order <- expand.grid(statistics, random_effects,
-                                       stringsAsFactors = FALSE) %>%
+                                       stringsAsFactors = FALSE) |>
       tidyr::unite("Column", "Var2", "Var1")
     col_order <- c(col_order, random_effect_order$Column)
   }

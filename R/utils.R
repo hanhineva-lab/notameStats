@@ -1,5 +1,4 @@
 #' @import BiocGenerics
-#' @importFrom magrittr "%>%"
 #' @importFrom utils citation
 #' @import methods
 #' @importFrom notame drop_qcs combined_data flag merge_objects mark_nas

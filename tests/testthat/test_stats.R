@@ -47,10 +47,10 @@ test_that("summary statistics work with all NA features", {
 
 # Cohen's D ----
 test_that("Cohen's d works", {
-  ex <- example_set %>%
-    drop_qcs() %>%
+  ex <- example_set |>
+    drop_qcs() |>
     mark_nas(0)
-  cd <- ex %>%
+  cd <- ex |>
     combined_data()
 
   cd1 <- cd[cd$Time == 1, ]
@@ -115,9 +115,9 @@ test_that("Cohen's d data checking works", {
 
 # Fold change ----
 test_that("Fold change works", {
-  ex <- example_set %>%
+  ex <- example_set |>
     mark_nas(0)
-  cd <- ex %>%
+  cd <- ex |>
     combined_data()
 
   cd1 <- cd[cd$Time == 1, ]
@@ -577,7 +577,7 @@ test_that("Pairwise Mann-Whitney tests works", {
   colData(object)$Time <- factor(c(rep(1, 8), rep(2, 8), rep(3, 8)))
 
   medians <- apply(assay(object), 1, tapply, object$Group, finite_median)
-  median_diffs1 <- medians %>%
+  median_diffs1 <- medians |>
     apply(2, function(x) {
       x[1] - x[2]
     })

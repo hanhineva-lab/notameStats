@@ -667,7 +667,7 @@ perform_auc <- function(object, time, subject, group, assay.type = NULL) {
   new_object <- SummarizedExperiment(assays = aucs, 
                                      rowData = rowData(object),
                                      colData = pheno_data) |>
-    merge_objects()
+    merge_notame_sets()
 
   log_text("AUC computation finished")
   
@@ -793,7 +793,7 @@ perform_lm <- function(object, formula_char, all_features = FALSE,
   
   from <- .get_from_name(object, assay.type)
   object <- notame:::.check_object(object, assay.type = from)
-
+  
   lm_fun <- function(feature, formula, data) {
     # Try to fit the linear model
     fit <- NULL
@@ -806,19 +806,10 @@ perform_lm <- function(object, formula_char, all_features = FALSE,
       result_row <- NULL
     } else {
       # Gather coefficients and CIs to one data frame row
-      coefs <- summary(fit)$coefficients
-      confints <- stats::confint(fit, level = 0.95)
-      coefs <- data.frame(Variable = rownames(coefs), coefs, 
-                          stringsAsFactors = FALSE)
-      confints <- data.frame(Variable = rownames(confints), confints,
-                             stringsAsFactors = FALSE)
-
-      result_row <- dplyr::left_join(coefs, confints, by = "Variable") |>
-        dplyr::rename("Std_Error" = "Std..Error", "t_value" = "t.value",
-                      "P" = "Pr...t..", "LCI95" = "X2.5..", 
-                      "UCI95" = "X97.5..") |>
-        tidyr::gather("Metric", "Value", -"Variable") |>
-        tidyr::unite("Column", "Variable", "Metric", sep = "_") |>
+      result_row <- 
+        tidyr::gather(broom::tidy(fit, conf.int = TRUE), 
+                      "Metric", "Value", -"term") |>
+        tidyr::unite("Column", "term", "Metric", sep = ".") |>
         tidyr::spread("Column", "Value")
       # Add R2 statistics and feature ID
       result_row$R2 <- summary(fit)$r.squared
@@ -831,18 +822,9 @@ perform_lm <- function(object, formula_char, all_features = FALSE,
   results_df <- .perform_test(object, formula_char, lm_fun, 
                               all_features, assay.type = from)
 
-  # Set a good column order
-  variables <- gsub("_P$", "", 
-                    colnames(results_df)[grep("P$", colnames(results_df))])
-  statistics <- c("Estimate", "LCI95", "UCI95", 
-                  "Std_Error", "t_value", "P", "P_FDR")
-  col_order <- expand.grid(statistics, variables, stringsAsFactors = FALSE) |>
-    tidyr::unite("Column", "Var2", "Var1")
-  col_order <- c("Feature_ID", col_order$Column, c("R2", "Adj_R2"))
-
   log_text("Linear regression performed.")
 
-  results_df[col_order]
+  results_df
 }
 
 #' Linear models ANOVA table

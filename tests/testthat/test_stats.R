@@ -197,10 +197,10 @@ test_that("Linear model works", {
     formula_char = "Feature ~ Time"
   )
 
-  expect_equal(lm_res$Time2_Estimate[1], smry$coefficients[2, 1])
-  expect_equal(lm_res$Time2_Std_Error[1], smry$coefficients[2, 2])
-  expect_equal(lm_res$Time2_t_value[1], smry$coefficients[2, 3])
-  expect_equal(lm_res$Time2_P[1], smry$coefficients[2, 4])
+  expect_equal(lm_res$Time2.estimate[1], smry$coefficients[2, 1])
+  expect_equal(lm_res$Time2.std.error[1], smry$coefficients[2, 2])
+  expect_equal(lm_res$Time2.statistic[1], smry$coefficients[2, 3])
+  expect_equal(lm_res$Time2.p.value[1], smry$coefficients[2, 4])
   expect_equal(lm_res$R2[1], smry$r.squared)
   expect_equal(lm_res$Adj_R2[1], smry$adj.r.squared)
 
@@ -216,7 +216,7 @@ test_that("Linear model works", {
   expect_true(all(is.na(lm_res[1:2, 2:ncol(lm_res)])))
 
   # FDR correction ignored for flagged compounds
-  ex_set_na <- flag_quality(ex_set_na)
+  ex_set_na <- flag_quality(mark_nas(example_set, value = 0))
   lm_res2 <- perform_lm(ex_set_na, formula_char = "Feature ~ Group")
   flag_idx <- !is.na(flag(ex_set_na))
   expect_true(all(is.na(lm_res2$Group_P_FDR[flag_idx])))

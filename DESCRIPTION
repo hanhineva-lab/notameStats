@@ -33,6 +33,7 @@ Depends:
 Imports:
     BiocGenerics,
     BiocParallel,
+    broom,
     dplyr,
     methods,
     notame,

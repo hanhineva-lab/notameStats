@@ -21,6 +21,7 @@ mixomics_plsda_optimize(
   object,
   y,
   ncomp,
+  plot_perf = FALSE,
   folds = 5,
   nrepeat = 50,
   all_features = FALSE,
@@ -34,6 +35,7 @@ mixomics_splsda_optimize(
   y,
   ncomp,
   dist,
+  plot_perf = FALSE,
   n_features = c(seq_len(10), seq(20, 300, 10)),
   folds = 5,
   nrepeat = 50,
@@ -60,6 +62,8 @@ in the model, in addition to molecular features}
 
 \item{...}{any parameters passed to 
 \code{\link[mixOmics]{plsda}}}
+
+\item{plot_perf}{plot performance of models in cross-validation}
 
 \item{folds}{the number of folds to use in k-fold cross validation}
 
@@ -90,8 +94,8 @@ of components and features, choose the one with minimal balanced error rate}
 }
 }
 \examples{
-data(example_set, package = "notame")
-noqc <- notame::drop_qcs(example_set)
+data(toy_notame_set, package = "notame")
+noqc <- notame::drop_qcs(toy_notame_set)
 plsda_res <- mixomics_plsda(noqc, y = "Group", ncomp = 2)
 # Cross-validation repeated only 5 times for quick run time 
 set.seed(38)
@@ -101,13 +105,11 @@ plsda_opt <- mixomics_plsda_optimize(noqc,
 set.seed(38)
 splsda_opt <- mixomics_splsda_optimize(noqc,
   y = "Group", dist = "max.dist", ncomp = 2,
-  n_features <- c(1:10, 12, 15, 20), nrepeat = 5
+  n_features = c(1:10, 12, 15, 20), nrepeat = 5
 )
-
-
 # Plot PLS-DA scores
 mixOmics::plotIndiv(plsda_res, 
-  comp = seq_len(2), group = drop_qcs(example_set)$Group, 
+  comp = seq_len(2), group = notame::drop_qcs(toy_notame_set)$Group, 
   ind.names = FALSE, title = "PLS-DA scores plot", legend = TRUE, 
   ellipse = TRUE)
 
@@ -115,7 +117,8 @@ mixOmics::plotIndiv(plsda_res,
 background <- mixOmics::background.predict(plsda_res, 
   comp.predicted = 2, dist = "max.dist")
 mixOmics::plotIndiv(plsda_res,
-  comp = seq_len(2), group = drop_qcs(example_set)$Group, ind.names = FALSE, 
+  comp = seq_len(2), group = notame::drop_qcs(toy_notame_set)$Group, 
+  ind.names = FALSE, 
   title = "prediction areas", legend = TRUE, background = background)
 
 }

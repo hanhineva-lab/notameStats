@@ -46,7 +46,7 @@ the same length.}
 \code{TRUE}, each correlation will be included in the results twice, where 
 the order of the variables '(which is x and which is y) is changed. Can be 
 useful for e.g. plotting a heatmap of the results, see examples of
-\code{\link[notameViz]{notameViz}}.}
+\code{\link[notameViz]{plot_effect_heatmap}}.}
 
 \item{assay.type1}{character, assay of object(1) to be used in case of 
 multiple assays}
@@ -71,25 +71,25 @@ those variables are computed. Or provide two distinct sets of variables
 and each y variable are computed.
 }
 \examples{
-data(example_set, package = "notame")
+data(toy_notame_set, package = "notame")
 # Correlations between all features
-correlations <- perform_correlation_tests(example_set, 
-  x = rownames(example_set), id = "Subject_ID")
+correlations <- perform_correlation_tests(toy_notame_set, 
+  x = rownames(toy_notame_set), id = "Subject_ID")
 
 # Spearman Correlations between features and sample information variables
 # Drop QCs and convert time to numeric
-no_qc <- notame::drop_qcs(example_set)
+no_qc <- notame::drop_qcs(toy_notame_set)
 no_qc$Time <- as.numeric(no_qc$Time)
 correlations <- perform_correlation_tests(no_qc,
-  x = rownames(example_set),
+  x = rownames(toy_notame_set),
   y = c("Time", "Injection_order"), method = "spearman"
 )
 
 # Correlations between variables from two distinct objects
-cross_object_cor <-perform_correlation_tests(example_set,
-  x = rownames(example_set),
-  object2 = example_set,
-  y = rownames(example_set),
+cross_object_cor <-perform_correlation_tests(toy_notame_set,
+  x = rownames(toy_notame_set),
+  object2 = toy_notame_set,
+  y = rownames(toy_notame_set),
   all_pairs = FALSE
 )
 }

@@ -39,8 +39,8 @@ For example, if testing for equality of variances in study groups, use
 "Feature ~ Group".
 }
 \examples{
-data(example_set, package = "notame")
-perform_homoscedasticity_tests(example_set, formula_char = "Feature ~ Group")
+data(toy_notame_set, package = "notame")
+perform_homoscedasticity_tests(toy_notame_set, formula_char = "Feature ~ Group")
 
 }
 \seealso{

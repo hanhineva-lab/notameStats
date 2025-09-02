@@ -51,11 +51,11 @@ see the example. With bootstrap ("boot") confidence intervals, the results
 are reproducible if RNGseed is set for the BiocParallel backend.
 }
 \examples{
-data(example_set, package = "notame")
+data(toy_notame_set, package = "notame")
 # A simple example without QC samples
 # Features predicted by Group and Time as fixed effects with Subject ID as a 
 # random effect
-lmer_results <- perform_lmer(notame::drop_qcs(example_set),
+lmer_results <- perform_lmer(notame::drop_qcs(toy_notame_set),
   formula_char = "Feature ~ Group + Time + (1 | Subject_ID)",
   ci_method = "Wald"
 )

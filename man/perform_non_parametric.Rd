@@ -49,18 +49,18 @@ For example, if testing for equality of means in study groups, use
 "Feature ~ Group".
 }
 \examples{
-data(example_set, package = "notame")
+data(toy_notame_set, package = "notame")
 # Including QCs as a study group for example for pairwise tests
-mann_whitney_results <- perform_non_parametric(example_set, 
+mann_whitney_results <- perform_non_parametric(toy_notame_set, 
   formula_char = "Feature ~ Group")
 # Using paired mode (pairs with QC are skipped as there are no common IDs in 
-# 'example_set')
-wilcoxon_signed_results <- perform_non_parametric(example_set,
+# 'toy_notame_set')
+wilcoxon_signed_results <- perform_non_parametric(toy_notame_set,
   formula_char = "Feature ~ Time",
   is_paired = TRUE,
   id = "Subject_ID")
 # Only two groups
-mann_whitney_results <- perform_non_parametric(notame::drop_qcs(example_set), 
+mann_whitney_results <- perform_non_parametric(notame::drop_qcs(toy_notame_set), 
   formula_char = "Feature ~ Group")
 
 }

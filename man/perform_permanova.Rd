@@ -42,9 +42,9 @@ Performs permutational multivariate analysis of variance. Uses package
 called PERMANOVA.
 }
 \examples{
-data(example_set, package = "notame")
+data(toy_notame_set, package = "notame")
 permanova_res <- perform_permanova(
-  notame::drop_qcs(example_set), 
+  notame::drop_qcs(toy_notame_set), 
   group = "Group")
 
 }

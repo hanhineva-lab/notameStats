@@ -16,8 +16,8 @@ A data frame of feature importance.
 Extracts feature importance in random forest in a nice format.
 }
 \examples{
-data(example_set, package = "notame")
-rf <- fit_rf(example_set, y = "Group")
+data(toy_notame_set, package = "notame")
+rf <- fit_rf(toy_notame_set, y = "Group")
 rf
 importance_rf(rf)
 

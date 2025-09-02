@@ -36,10 +36,10 @@ in pheno data can be specified. To make the formulas flexible, the word
 see the example.
 }
 \examples{
-data(example_set, package = "notame")
+data(toy_notame_set, package = "notame")
 # A simple example without QC samples
 # Features predicted by Group and Time
-lm_results <- perform_lm(notame::drop_qcs(example_set), 
+lm_results <- perform_lm(notame::drop_qcs(toy_notame_set), 
   formula_char = "Feature ~ Group + Time")
 
 }

@@ -42,10 +42,10 @@ in the formula. "Feature" will be replaced by the actual Feature IDs during
 model fitting, see the example.
 }
 \examples{
-data(example_set, package = "notame")
+data(toy_notame_set, package = "notame")
 # A simple example without QC samples
 # Time predicted by features
-logistic_results <- perform_logistic(notame::drop_qcs(example_set),
+logistic_results <- perform_logistic(notame::drop_qcs(toy_notame_set),
   formula_char = "Time ~ Feature + Group"
 )
 

@@ -26,13 +26,13 @@ median absolute deviation (mad), minimum (min), maximum (max)
 as well as 25% and 75% quantiles (Q25 & Q75).
 }
 \examples{
-data(example_set, package = "notame")
+data(toy_notame_set, package = "notame")
 # Group by "Group"
-sum_stats <- summary_statistics(example_set, grouping_cols = "Group")
+sum_stats <- summary_statistics(toy_notame_set, grouping_cols = "Group")
 # Group by Group and Time
-sum_stats <- summary_statistics(example_set, 
+sum_stats <- summary_statistics(toy_notame_set, 
   grouping_cols = c("Group", "Time"))
 # No Grouping
-sum_stats <- summary_statistics(example_set)
+sum_stats <- summary_statistics(toy_notame_set)
 
 }

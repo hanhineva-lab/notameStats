@@ -28,9 +28,9 @@ change between two time points is computed for each subject,
 and Cohen's d is computed from the changes.
 }
 \examples{
-data(example_set, package = "notame")
-d_results <- cohens_d(notame::drop_qcs(example_set), group = "Group")
-d_results_time <- cohens_d(notame::drop_qcs(example_set),
+data(toy_notame_set, package = "notame")
+d_results <- cohens_d(notame::drop_qcs(toy_notame_set), group = "Group")
+d_results_time <- cohens_d(notame::drop_qcs(toy_notame_set),
   group = "Group", time = "Time", id = "Subject_ID"
 )
 

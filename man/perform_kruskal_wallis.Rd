@@ -38,8 +38,8 @@ For example, if testing for equality of means in study groups, use
 "Feature ~ Group".
 }
 \examples{
-data(example_set, package = "notame")
-perform_kruskal_wallis(example_set, formula_char = "Feature ~ Group")
+data(toy_notame_set, package = "notame")
+perform_kruskal_wallis(toy_notame_set, formula_char = "Feature ~ Group")
 
 }
 \seealso{

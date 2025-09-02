@@ -94,8 +94,8 @@ results, notably \code{\link[MUVR2]{plotMV}},
 Many of these return different plots depending on the model specification.
 }
 \examples{
-data(example_set, package = "notame")
-ex_set <- notame::drop_qcs(example_set)[1:10, ]
+data(toy_notame_set, package = "notame")
+ex_set <- notame::drop_qcs(toy_notame_set)[1:10, ]
 ex_set$Injection_order <- as.numeric(ex_set$Injection_order)
 # Simple PLS regression model
 pls_model <- muvr_analysis(ex_set, 

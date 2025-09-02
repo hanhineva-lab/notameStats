@@ -28,14 +28,14 @@
 #' @param assay.type character, assay to be used in case of multiple assays
 #'
 #' @examples
-#' data(example_set, package = "notame")
+#' data(toy_notame_set, package = "notame")
 #' # Group by "Group"
-#' sum_stats <- summary_statistics(example_set, grouping_cols = "Group")
+#' sum_stats <- summary_statistics(toy_notame_set, grouping_cols = "Group")
 #' # Group by Group and Time
-#' sum_stats <- summary_statistics(example_set, 
+#' sum_stats <- summary_statistics(toy_notame_set, 
 #'   grouping_cols = c("Group", "Time"))
 #' # No Grouping
-#' sum_stats <- summary_statistics(example_set)
+#' sum_stats <- summary_statistics(toy_notame_set)
 #'
 #' @return A data frame with the summary statistics.
 #'
@@ -113,11 +113,11 @@ summary_statistics <- function(object, grouping_cols = NULL,
 #' @return A data frame with removed and/or renamed columns.
 #'
 #' @examples
-#' data(example_set, package = "notame")
+#' data(toy_notame_set, package = "notame")
 #' # Simple manipulation to linear model results
-#' lm_results <- perform_lm(notame::drop_qcs(example_set), 
+#' lm_results <- perform_lm(notame::drop_qcs(toy_notame_set), 
 #'   formula_char = "Feature ~ Group + Time")
-#' lm_results <-summarize_results(lm_results,
+#' lm_results <- summarize_results(lm_results,
 #'   rename = c("GroupB" = "GroupB_vs_A", "Time2" = "Time2_vs_1")
 #' )
 #'
@@ -133,8 +133,8 @@ summarize_results <- function(df, remove = c("Intercept", "CI95", "Std_error",
     }
   }
   if (summary) {
-    ifelse(fdr, p_cols <- colnames(df)[grep("_P_FDR$", colnames(df))],
-           p_cols <- colnames(df)[grep("_P$", colnames(df))])
+    ifelse(fdr, p_cols <- colnames(df)[grep("_FDR$|_FDR", colnames(df))],
+           p_cols <- colnames(df)[grep("_P$|p.value", colnames(df))])
     df$Low_p_values <- apply(df[, p_cols], 1, 
                              function(x) sum(x < p_limit, na.rm = TRUE))
     df$Lowest_p <- apply(df[, p_cols], 1, 
@@ -283,9 +283,9 @@ summarize_results <- function(df, remove = c("Intercept", "CI95", "Std_error",
 #' @return A data frame with Cohen's d for each feature.
 #'
 #' @examples
-#' data(example_set, package = "notame")
-#' d_results <- cohens_d(notame::drop_qcs(example_set), group = "Group")
-#' d_results_time <- cohens_d(notame::drop_qcs(example_set),
+#' data(toy_notame_set, package = "notame")
+#' d_results <- cohens_d(notame::drop_qcs(toy_notame_set), group = "Group")
+#' d_results_time <- cohens_d(notame::drop_qcs(toy_notame_set),
 #'   group = "Group", time = "Time", id = "Subject_ID"
 #' )
 #'
@@ -348,11 +348,11 @@ cohens_d <- function(object, group, id = NULL,
 #' @return A data frame with fold changes for each feature.
 #'
 #' @examples
-#' data(example_set, package = "notame")
+#' data(toy_notame_set, package = "notame")
 #' # Between groups
-#' fc <- fold_change(example_set, group = "Group")
+#' fc <- fold_change(toy_notame_set, group = "Group")
 #' # Between time points
-#' fc <- fold_change(example_set, group = "Time")
+#' fc <- fold_change(toy_notame_set, group = "Time")
 #'
 #' @export
 fold_change <- function(object, group, assay.type = NULL) {
@@ -470,7 +470,7 @@ fold_change <- function(object, group, assay.type = NULL) {
 #' \code{TRUE}, each correlation will be included in the results twice, where 
 #' the order of the variables '(which is x and which is y) is changed. Can be 
 #' useful for e.g. plotting a heatmap of the results, see examples of
-#' \code{\link[notameViz]{notameViz}}.
+#' \code{\link[notameViz]{plot_effect_heatmap}}.
 #' @param assay.type1 character, assay of object(1) to be used in case of 
 #' multiple assays
 #' @param assay.type2 character, assay of object2 to be used in case of 
@@ -481,25 +481,25 @@ fold_change <- function(object, group, assay.type = NULL) {
 #' variables, correlation coefficient and p-value.
 #'
 #' @examples
-#' data(example_set, package = "notame")
+#' data(toy_notame_set, package = "notame")
 #' # Correlations between all features
-#' correlations <- perform_correlation_tests(example_set, 
-#'   x = rownames(example_set), id = "Subject_ID")
+#' correlations <- perform_correlation_tests(toy_notame_set, 
+#'   x = rownames(toy_notame_set), id = "Subject_ID")
 #'
 #' # Spearman Correlations between features and sample information variables
 #' # Drop QCs and convert time to numeric
-#' no_qc <- notame::drop_qcs(example_set)
+#' no_qc <- notame::drop_qcs(toy_notame_set)
 #' no_qc$Time <- as.numeric(no_qc$Time)
 #' correlations <- perform_correlation_tests(no_qc,
-#'   x = rownames(example_set),
+#'   x = rownames(toy_notame_set),
 #'   y = c("Time", "Injection_order"), method = "spearman"
 #' )
 #'
 #' # Correlations between variables from two distinct objects
-#' cross_object_cor <-perform_correlation_tests(example_set,
-#'   x = rownames(example_set),
-#'   object2 = example_set,
-#'   y = rownames(example_set),
+#' cross_object_cor <-perform_correlation_tests(toy_notame_set,
+#'   x = rownames(toy_notame_set),
+#'   object2 = toy_notame_set,
+#'   y = rownames(toy_notame_set),
 #'   all_pairs = FALSE
 #' )
 #' @seealso \code{\link{cor.test}}, \code{\link[rmcorr]{rmcorr}}
@@ -625,9 +625,9 @@ perform_correlation_tests <- function(object, x, y = x, id = NULL,
 #' @return A pseudo SummarizedExperiment object with the AUCs.
 #'
 #' @examples
-#' data(example_set, package = "notame")
+#' data(toy_notame_set, package = "notame")
 #' # Drop QC samples before computing AUCs
-#' aucs <- perform_auc(notame::drop_qcs(example_set), time = "Time", 
+#' aucs <- perform_auc(notame::drop_qcs(toy_notame_set), time = "Time", 
 #'                     subject = "Subject_ID", group = "Group")
 #' # t-test with the AUCs
 #' t_test_results <- perform_t_test(aucs, formula_char = "Feature ~ Group")
@@ -778,10 +778,10 @@ perform_auc <- function(object, time, subject, group, assay.type = NULL) {
 #' see the example.
 #'
 #' @examples
-#' data(example_set, package = "notame")
+#' data(toy_notame_set, package = "notame")
 #' # A simple example without QC samples
 #' # Features predicted by Group and Time
-#' lm_results <- perform_lm(notame::drop_qcs(example_set), 
+#' lm_results <- perform_lm(notame::drop_qcs(toy_notame_set), 
 #'   formula_char = "Feature ~ Group + Time")
 #'
 #' @seealso \code{\link[stats]{lm}}
@@ -853,10 +853,10 @@ perform_lm <- function(object, formula_char, all_features = FALSE,
 #' see the example.
 #'
 #' @examples
-#' data(example_set, package = "notame")
+#' data(toy_notame_set, package = "notame")
 #' # A simple example without QC samples
 #' # Features predicted by Group and Time
-#' lm_anova_results <- perform_lm_anova(notame::drop_qcs(example_set), 
+#' lm_anova_results <- perform_lm_anova(notame::drop_qcs(toy_notame_set), 
 #'   formula_char = "Feature ~ Group + Time")
 #'
 #' @seealso \code{\link[stats]{lm}}
@@ -930,10 +930,10 @@ perform_lm_anova <- function(object, formula_char, all_features = FALSE,
 #' model fitting, see the example.
 #'
 #' @examples
-#' data(example_set, package = "notame")
+#' data(toy_notame_set, package = "notame")
 #' # A simple example without QC samples
 #' # Time predicted by features
-#' logistic_results <- perform_logistic(notame::drop_qcs(example_set),
+#' logistic_results <- perform_logistic(notame::drop_qcs(toy_notame_set),
 #'   formula_char = "Time ~ Feature + Group"
 #' )
 #'
@@ -1121,11 +1121,11 @@ perform_logistic <- function(object, formula_char, all_features = FALSE,
 #' are reproducible if RNGseed is set for the BiocParallel backend. 
 #' 
 #' @examples
-#' data(example_set, package = "notame")
+#' data(toy_notame_set, package = "notame")
 #' # A simple example without QC samples
 #' # Features predicted by Group and Time as fixed effects with Subject ID as a 
 #' # random effect
-#' lmer_results <- perform_lmer(notame::drop_qcs(example_set),
+#' lmer_results <- perform_lmer(notame::drop_qcs(toy_notame_set),
 #'   formula_char = "Feature ~ Group + Time + (1 | Subject_ID)",
 #'   ci_method = "Wald"
 #' )
@@ -1211,8 +1211,8 @@ perform_lmer <- function(object, formula_char, all_features = FALSE,
 #' @return A data frame with the results.
 #'
 #' @examples
-#' data(example_set, package = "notame")
-#' perform_homoscedasticity_tests(example_set, formula_char = "Feature ~ Group")
+#' data(toy_notame_set, package = "notame")
+#' perform_homoscedasticity_tests(toy_notame_set, formula_char = "Feature ~ Group")
 #'
 #' @seealso \code{\link{bartlett.test}}, \code{\link[car]{leveneTest}}, 
 #' \code{\link{fligner.test}}
@@ -1282,8 +1282,8 @@ perform_homoscedasticity_tests <- function(object, formula_char,
 #' @seealso \code{\link{kruskal.test}}
 #'
 #' @examples
-#' data(example_set, package = "notame")
-#' perform_kruskal_wallis(example_set, formula_char = "Feature ~ Group")
+#' data(toy_notame_set, package = "notame")
+#' perform_kruskal_wallis(toy_notame_set, formula_char = "Feature ~ Group")
 #'
 #' @export
 perform_kruskal_wallis <- function(object, formula_char, all_features = FALSE,
@@ -1343,8 +1343,8 @@ perform_kruskal_wallis <- function(object, formula_char, all_features = FALSE,
 #' @seealso \code{\link{oneway.test}}
 #'
 #' @examples
-#' data(example_set, package = "notame")
-#' perform_oneway_anova(example_set, formula_char = "Feature ~ Group")
+#' data(toy_notame_set, package = "notame")
+#' perform_oneway_anova(toy_notame_set, formula_char = "Feature ~ Group")
 #'
 #' @export
 perform_oneway_anova <- function(object, formula_char, all_features = FALSE,
@@ -1399,16 +1399,16 @@ perform_oneway_anova <- function(object, formula_char, all_features = FALSE,
 #' @return A data frame with the results.
 #'
 #' @examples
-#' data(example_set, package = "notame")
+#' data(toy_notame_set, package = "notame")
 #' # Including QCs as a study group for example
-#' t_test_results <- perform_t_test(example_set, 
+#' t_test_results <- perform_t_test(toy_notame_set, 
 #'   formula_char = "Feature ~ Group")
 #' # Using paired mode (pairs with QC are skipped as there are no common IDs in 
-#' # 'example_set')
-#' t_test_results <- perform_t_test(example_set,
+#' # 'toy_notame_set')
+#' t_test_results <- perform_t_test(toy_notame_set,
 #'   formula_char = "Feature ~ Time", is_paired = TRUE, id = "Subject_ID")
 #' # Only two groups
-#' t_test_results <- perform_t_test(notame::drop_qcs(example_set),
+#' t_test_results <- perform_t_test(notame::drop_qcs(toy_notame_set),
 #'   formula_char = "Feature ~ Group")
 #' 
 #' @seealso \code{\link[stats]{t.test}}
@@ -1445,7 +1445,7 @@ perform_t_test <- function(object, formula_char, is_paired = FALSE, id = NULL,
 }
 
 .adjust_p_values <- function(x, flags) {
-  p_cols <- colnames(x)[grepl("_P$", colnames(x))]
+  p_cols <- colnames(x)[grepl("p.value$|_P$", colnames(x))]
   for (p_col in p_cols) {
     p_values <- x[, p_col, drop = TRUE]
     p_values[!is.na(flags)] <- NA
@@ -1607,18 +1607,18 @@ perform_t_test <- function(object, formula_char, is_paired = FALSE, id = NULL,
 #' @return A data frame with the results.
 #'
 #' @examples
-#' data(example_set, package = "notame")
+#' data(toy_notame_set, package = "notame")
 #' # Including QCs as a study group for example for pairwise tests
-#' mann_whitney_results <- perform_non_parametric(example_set, 
+#' mann_whitney_results <- perform_non_parametric(toy_notame_set, 
 #'   formula_char = "Feature ~ Group")
 #' # Using paired mode (pairs with QC are skipped as there are no common IDs in 
-#' # 'example_set')
-#' wilcoxon_signed_results <- perform_non_parametric(example_set,
+#' # 'toy_notame_set')
+#' wilcoxon_signed_results <- perform_non_parametric(toy_notame_set,
 #'   formula_char = "Feature ~ Time",
 #'   is_paired = TRUE,
 #'   id = "Subject_ID")
 #' # Only two groups
-#' mann_whitney_results <- perform_non_parametric(notame::drop_qcs(example_set), 
+#' mann_whitney_results <- perform_non_parametric(notame::drop_qcs(toy_notame_set), 
 #'   formula_char = "Feature ~ Group")
 #'
 #' @seealso \code{\link[stats]{wilcox.test}}

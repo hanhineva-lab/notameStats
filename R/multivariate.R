@@ -29,8 +29,8 @@
 #' \code{\link{importance_rf}}
 #'
 #' @examples
-#' data(example_set, package = "notame")
-#' rf <- fit_rf(example_set, y = "Group")
+#' data(toy_notame_set, package = "notame")
+#' rf <- fit_rf(toy_notame_set, y = "Group")
 #' rf
 #' importance_rf(rf)
 #'
@@ -69,8 +69,8 @@ fit_rf <- function(object, y, all_features = FALSE,
 #' @seealso \code{\link[randomForest]{randomForest}}, \code{\link{fit_rf}}
 #'
 #' @examples
-#' data(example_set, package = "notame")
-#' rf <- fit_rf(example_set, y = "Group")
+#' data(toy_notame_set, package = "notame")
+#' rf <- fit_rf(toy_notame_set, y = "Group")
 #' rf
 #' importance_rf(rf)
 #'
@@ -105,63 +105,6 @@ importance_rf <- function(rf) {
   x
 }
 
-#' Plot points in PLS space
-#'
-#' A helper function for \code{mixomics_pls} and \code{mixomics_spls}.
-#'
-#' @param model a PLS or sPLS model
-#' @param Y the Y matrix
-#' @param y the name of the y variable
-#' @param title plot title
-#' @noRd
-plot_mixomics_pls <- function(model, Y, y, title) {
-  if (ncol(model$variates$X) == 1) {
-    stop("Can't plot a single component")
-  }
-  # Extract scores and add y variable
-  scores <- data.frame(model$variates$X[, seq_len(2)])
-  colnames(scores) <- c("X1", "X2")
-  scores[, y[1]] <- Y[, 1]
-  # Explained variance as percentage
-  var_exp <- 100 * model$prop_expl_var$X[seq_len(2)] %>% round(digits = 3)
-  p <- ggplot(scores, aes(x = .data[["X1"]], y = .data[["X2"]], 
-                          color = .data[[y]])) +
-    geom_point() +
-    getOption("notame.color_scale_con") +
-    theme_minimal() +
-    labs(x = paste("X1:", var_exp[1], "%"),
-         y = paste("X2:", var_exp[2], "%"),
-         title = title)
-  p
-}
-
-plot_mixomics_perf <- function(perf_pls, ncomp){  
-  # Plot Mean Square Error
-  p1 <- ggplot(data.frame(ncomp = seq_len(ncomp),
-                          MSEP = as.vector(perf_pls$measure$MSEP$summary$mean)),
-               aes(x = ncomp, y = .data$MSEP)) +
-    geom_line() +
-    labs(color = NULL, title = "Mean Square Error") +
-    theme_bw() +
-    scale_x_continuous(breaks = seq_len(ncomp)) +
-    theme(panel.grid.minor.x = element_blank())
-
-  # Plot R2 and Q2
-  plot_data <- data.frame(R2 = as.vector(perf_pls$measure$R2$summary$mean),
-                          Q2 = as.vector(perf_pls$measure$Q2$summary$mean),
-                          ncomp = seq_len(ncomp)) %>%
-    tidyr::gather(key = "key", value = "value", -ncomp)
-
-  p2 <- ggplot(plot_data, aes(x = ncomp, y = .data$value, color = .data$key)) +
-    geom_line() +
-    labs(color = NULL, title = "R2 and Q2") +
-    theme_bw() +
-    getOption("notame.color_scale_dis") +
-    scale_x_continuous(breaks = seq_len(ncomp)) +
-    theme(panel.grid.minor.x = element_blank())
-  
-  p <- cowplot::plot_grid(p1, p2, nrow = 1)
-}
 #' PLS
 #'
 #' Simple wrappers for fitting a PLS model using mixOmics package. The result 
@@ -181,6 +124,7 @@ plot_mixomics_perf <- function(perf_pls, ncomp){
 #' object
 #' @param y character vector, column names of the grouping variable to predict
 #' @param ncomp number of X components
+#' @param plot_perf plot performance of models in cross-validation
 #' @param folds the number of folds to use in k-fold cross validation
 #' @param nrepeat the number of times to repeat the cross validation. Lower 
 #' this for faster testing.
@@ -198,18 +142,18 @@ plot_mixomics_perf <- function(perf_pls, ncomp){
 #' plot.
 #'
 #' @examples
-#' data(example_set, package = "notame")
-#' pls_res <- mixomics_pls(example_set, y = "Injection_order", ncomp = 3)
+#' data(toy_notame_set, package = "notame")
+#' pls_res <- mixomics_pls(toy_notame_set, y = "Injection_order", ncomp = 3)
 #' # Cross-validation repeated only 5 times for quick run time 
-#' pls_opt <- mixomics_pls_optimize(example_set, 
+#' pls_opt <- mixomics_pls_optimize(toy_notame_set, 
 #'   y = "Injection_order", ncomp = 3, nrepeat = 5)
-#' spls_opt <- mixomics_spls_optimize(example_set,
+#' spls_opt <- mixomics_spls_optimize(toy_notame_set,
 #'   y = "Injection_order", ncomp = 3,
-#'   n_features <- c(1:10, 12, 15, 20), nrepeat = 5
+#'   n_features = c(1:10, 12, 15, 20), nrepeat = 5
 #' )
 #' # Plot score plot of any final model
-#' plot_mixomics_pls(pls_opt, 
-#'   Y = colData(example_set)["Injection_order"], y = "Injection_order", 
+#' notameViz::plot_mixomics_pls(pls_res, 
+#'   Y = colData(toy_notame_set)["Injection_order"], y = "Injection_order", 
 #'   title = "PLS: first 2 components and the outcome variable")
 #' @name pls
 #' @seealso \code{\link[mixOmics]{pls}}, \code{\link[mixOmics]{perf}},
@@ -218,7 +162,7 @@ NULL
 
 #' @rdname pls
 #' @export
-mixomics_pls <- function(object, y, ncomp, 
+mixomics_pls <- function(object, y, ncomp,
                          all_features = FALSE, covariates = NULL, 
                          assay.type = NULL, ...) {
   if (!requireNamespace("mixOmics", quietly = TRUE)) {
@@ -245,7 +189,8 @@ mixomics_pls <- function(object, y, ncomp,
 #' @rdname pls
 #'
 #' @export
-mixomics_pls_optimize <- function(object, y, ncomp, folds = 5, nrepeat = 50,
+mixomics_pls_optimize <- function(object, y, ncomp, plot_perf = FALSE, 
+                                  folds = 5, nrepeat = 50,
                                   all_features = FALSE, covariates = NULL, 
                                   assay.type = NULL, ...) {
   if (!requireNamespace("mixOmics", quietly = TRUE)) {
@@ -261,12 +206,11 @@ mixomics_pls_optimize <- function(object, y, ncomp, folds = 5, nrepeat = 50,
   pls_res <- mixomics_pls(object = object, y = y, ncomp = ncomp, 
                           all_features = all_features,
                           covariates = covariates, assay.type = from, ...)
-
+    
   log_text("Evaluating PLS performance")
   perf_pls <- mixOmics::perf(pls_res, validation = "Mfold", 
                              folds = folds, nrepeat = nrepeat)
   
-  p <- plot_mixomics_perf(perf_pls, ncomp = ncomp)
   # Find the optimal number of components
   ncomp_opt <- which(perf_pls$measure$MSEP$summary$mean ==
     min(perf_pls$measure$MSEP$summary$mean))[1]
@@ -279,14 +223,22 @@ mixomics_pls_optimize <- function(object, y, ncomp, folds = 5, nrepeat = 50,
   pls_final <- mixomics_pls(object = object, y = y, ncomp = ncomp_opt,
                             all_features = all_features,
                             covariates = covariates, assay.type = from, ...)
-
-  list(model = pls_final, plot_perf = p)
+  if (plot_perf) {
+    if (!requireNamespace("notameViz", quietly = TRUE)) {
+      stop("Package \"notameViz\" needed for this function to work.",
+            " Please install it.", call. = FALSE)
+    }
+    p <- notameViz::plot_mixomics_perf(perf_pls, ncomp = ncomp)
+    return(list(model = pls_final, plot_perf = p))
+  }
+  pls_final
 }
 
 #' @rdname pls
 #'
 #' @export
-mixomics_spls_optimize <- function(object, y, ncomp, n_features =
+mixomics_spls_optimize <- function(object, y, ncomp, plot_perf = FALSE,
+                                   n_features =
                                    c(seq_len(10), seq(20, 300, 10)), 
                                    folds = 5, nrepeat = 50,
                                    all_features = FALSE, covariates = NULL,
@@ -311,9 +263,6 @@ mixomics_spls_optimize <- function(object, y, ncomp, n_features =
                                     test.keepX = n_features,
                                     validation = "Mfold", folds = folds,
                                     nrepeat = nrepeat, measure = "MAE")
-  # Plot error for each component with different number of features
-  plot(plot(tuned_spls) + ggtitle("Performance of sPLS models"))
-  p1 <- recordPlot()
 
   # Choose optimal numbers of components and features
   ncomp_opt <- tuned_spls$choice.ncomp$ncomp
@@ -325,22 +274,13 @@ mixomics_spls_optimize <- function(object, y, ncomp, n_features =
   spls_final <- mixOmics::spls(predictors, outcome, ncomp = ncomp_opt, 
                                keepX = keep_x, ...)
 
-  list(model = spls_final, plot_perf = p1)
-}
-
-.plot_plsda <- function(model, y, title, dist = "max.dist") {
-  background <- mixOmics::background.predict(model, comp.predicted = 2, 
-                                             dist = dist)
-                                             
-  p1 <- mixOmics::plotIndiv(model, comp = seq_len(2), group = y, 
-                      ind.names = FALSE, title = paste(title), 
-                      legend = TRUE, ellipse = TRUE)
-
-  p2 <- mixOmics::plotIndiv(model, comp = seq_len(2), group = y,
-                            ind.names = FALSE,
-                            title = paste(title, "prediction areas"), 
-                            legend = TRUE, background = background)
-  return(list(p1, p2))
+  if (plot_perf) {
+    # Plot error for each component with different number of features
+    plot(plot(tuned_spls))
+    p <- grDevices::recordPlot()
+    return(list(model = spls_final, plot_perf = p))
+  }
+  spls_final
 }
 
 #' PLS-DA
@@ -360,6 +300,7 @@ mixomics_spls_optimize <- function(object, y, ncomp, n_features =
 #' @param object a SummarizedExperiment object
 #' @param y character, column name of the grouping variable to predict
 #' @param ncomp the number of X components
+#' @param plot_perf plot performance of models in cross-validation
 #' @param folds the number of folds to use in k-fold cross validation
 #' @param nrepeat the number of times to repeat the cross validation. Lower 
 #' this for faster testing.
@@ -379,8 +320,8 @@ mixomics_spls_optimize <- function(object, y, ncomp, n_features =
 #' models, a list with object of class "mixo_plsda" and a performance plot.
 #'
 #' @examples
-#' data(example_set, package = "notame")
-#' noqc <- notame::drop_qcs(example_set)
+#' data(toy_notame_set, package = "notame")
+#' noqc <- notame::drop_qcs(toy_notame_set)
 #' plsda_res <- mixomics_plsda(noqc, y = "Group", ncomp = 2)
 #' # Cross-validation repeated only 5 times for quick run time 
 #' set.seed(38)
@@ -390,13 +331,11 @@ mixomics_spls_optimize <- function(object, y, ncomp, n_features =
 #' set.seed(38)
 #' splsda_opt <- mixomics_splsda_optimize(noqc,
 #'   y = "Group", dist = "max.dist", ncomp = 2,
-#'   n_features <- c(1:10, 12, 15, 20), nrepeat = 5
+#'   n_features = c(1:10, 12, 15, 20), nrepeat = 5
 #' )
-#' 
-#' 
 #' # Plot PLS-DA scores
 #' mixOmics::plotIndiv(plsda_res, 
-#'   comp = seq_len(2), group = drop_qcs(example_set)$Group, 
+#'   comp = seq_len(2), group = notame::drop_qcs(toy_notame_set)$Group, 
 #'   ind.names = FALSE, title = "PLS-DA scores plot", legend = TRUE, 
 #'   ellipse = TRUE)
 #'
@@ -404,7 +343,8 @@ mixomics_spls_optimize <- function(object, y, ncomp, n_features =
 #' background <- mixOmics::background.predict(plsda_res, 
 #'   comp.predicted = 2, dist = "max.dist")
 #' mixOmics::plotIndiv(plsda_res,
-#'   comp = seq_len(2), group = drop_qcs(example_set)$Group, ind.names = FALSE, 
+#'   comp = seq_len(2), group = notame::drop_qcs(toy_notame_set)$Group, 
+#'   ind.names = FALSE, 
 #'   title = "prediction areas", legend = TRUE, background = background)
 
 #' 
@@ -446,7 +386,8 @@ mixomics_plsda <- function(object, y, ncomp,
 
 #' @rdname pls_da
 #' @export
-mixomics_plsda_optimize <- function(object, y, ncomp, folds = 5, nrepeat = 50,
+mixomics_plsda_optimize <- function(object, y, ncomp, plot_perf = FALSE,
+                                    folds = 5, nrepeat = 50,
                                     all_features = FALSE, covariates = NULL, 
                                     assay.type = NULL, ...) {
   if (!requireNamespace("mixOmics", quietly = TRUE)) {
@@ -469,11 +410,6 @@ mixomics_plsda_optimize <- function(object, y, ncomp, folds = 5, nrepeat = 50,
   perf_plsda <- mixOmics::perf(plsda_res, validation = "Mfold", folds = folds,
                                auc = TRUE, nrepeat = nrepeat)
 
-  plot(perf_plsda, col = mixOmics::color.mixo(seq_len(3)), 
-       sd = TRUE, legend.position = "horizontal")
-  graphics::title("Performance of PLS-DA models")
-  p <- recordPlot()
-
   # Find the distance metric with minimum BER
   ber <- perf_plsda$error.rate$BER
   inds <- which(ber == min(ber), arr.ind = TRUE)[1, ]
@@ -486,14 +422,22 @@ mixomics_plsda_optimize <- function(object, y, ncomp, folds = 5, nrepeat = 50,
   plsda_final <- mixomics_plsda(object = object, y = y, ncomp = ncomp_opt, 
                                 all_features = all_features,
                                 covariates = covariates, assay.type = from, ...)
-                        
-  list(model = plsda_final, plot_perf = p)
+
+  if (plot_perf) {
+    plot(perf_plsda, col = mixOmics::color.mixo(seq_len(3)), 
+         sd = TRUE, legend.position = "horizontal")
+    graphics::title("Performance of PLS-DA models")
+    p <- grDevices::recordPlot()
+    return(list(model = plsda_final, plot_perf = p))
+  }
+
+  plsda_final
 }
 
 
 #' @rdname pls_da
 #' @export
-mixomics_splsda_optimize <- function(object, y, ncomp, dist,
+mixomics_splsda_optimize <- function(object, y, ncomp, dist, plot_perf = FALSE,
                                      n_features = c(seq_len(10), 
                                                     seq(20, 300, 10)),
                                      folds = 5, nrepeat = 50,
@@ -524,9 +468,6 @@ mixomics_splsda_optimize <- function(object, y, ncomp, dist,
                                         dist = dist, measure = "BER", 
                                         nrepeat = nrepeat,
                                         test.keepX = n_features)
-  # Plot error rate of different components as a function of number of features
-  p <- plot(plot(tuned_splsda) + ggtitle("Performance of sPLS-DA models"))
-  p <- recordPlot()
   
   # Choose optimal numbers of components and features
   ncomp_opt <- tuned_splsda$choice.ncomp$ncomp
@@ -537,8 +478,14 @@ mixomics_splsda_optimize <- function(object, y, ncomp, dist,
   # Fit the final model
   splsda_final <- mixOmics::splsda(predictors, outcome, ncomp = ncomp_opt,
                                    keepX = keep_x)
-
-  list(model = splsda_final, plot_perf = p)
+  if (plot_perf) {
+    # Plot error rate of different components as a function of number of features
+    p <- plot(plot(tuned_splsda))
+    p <- grDevices::recordPlot()
+    return(list(model = splsda_final, plot_perf = p))
+  }
+  
+  splsda_final
 }
 
 # ------------------- MUVR --------------------------------
@@ -600,8 +547,8 @@ mixomics_splsda_optimize <- function(object, y, ncomp, dist,
 #' Many of these return different plots depending on the model specification.
 #'
 #' @examples
-#' data(example_set, package = "notame")
-#' ex_set <- notame::drop_qcs(example_set)[1:10, ]
+#' data(toy_notame_set, package = "notame")
+#' ex_set <- notame::drop_qcs(toy_notame_set)[1:10, ]
 #' ex_set$Injection_order <- as.numeric(ex_set$Injection_order)
 #' # Simple PLS regression model
 #' pls_model <- muvr_analysis(ex_set, 
@@ -769,9 +716,9 @@ muvr_analysis <- function(object, y = NULL, id = NULL, multi_level = FALSE,
 #' @return A PERMANOVA object.
 #'
 #' @examples
-#' data(example_set, package = "notame")
+#' data(toy_notame_set, package = "notame")
 #' permanova_res <- perform_permanova(
-#'   notame::drop_qcs(example_set), 
+#'   notame::drop_qcs(toy_notame_set), 
 #'   group = "Group")
 #'
 #' @export

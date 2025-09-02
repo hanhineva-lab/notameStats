@@ -46,16 +46,16 @@ P-values of each comparison are corrected separately from each
 other.
 }
 \examples{
-data(example_set, package = "notame")
+data(toy_notame_set, package = "notame")
 # Including QCs as a study group for example
-t_test_results <- perform_t_test(example_set, 
+t_test_results <- perform_t_test(toy_notame_set, 
   formula_char = "Feature ~ Group")
 # Using paired mode (pairs with QC are skipped as there are no common IDs in 
-# 'example_set')
-t_test_results <- perform_t_test(example_set,
+# 'toy_notame_set')
+t_test_results <- perform_t_test(toy_notame_set,
   formula_char = "Feature ~ Time", is_paired = TRUE, id = "Subject_ID")
 # Only two groups
-t_test_results <- perform_t_test(notame::drop_qcs(example_set),
+t_test_results <- perform_t_test(notame::drop_qcs(toy_notame_set),
   formula_char = "Feature ~ Group")
 
 }

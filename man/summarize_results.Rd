@@ -36,11 +36,11 @@ Uses regexp to remove unnecessary columns from statistics results data frame.
 Can also rename columns effectively.
 }
 \examples{
-data(example_set, package = "notame")
+data(toy_notame_set, package = "notame")
 # Simple manipulation to linear model results
-lm_results <- perform_lm(notame::drop_qcs(example_set), 
+lm_results <- perform_lm(notame::drop_qcs(toy_notame_set), 
   formula_char = "Feature ~ Group + Time")
-lm_results <-summarize_results(lm_results,
+lm_results <- summarize_results(lm_results,
   rename = c("GroupB" = "GroupB_vs_A", "Time2" = "Time2_vs_1")
 )
 

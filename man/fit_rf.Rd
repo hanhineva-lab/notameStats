@@ -47,8 +47,8 @@ After fitting the random forest, use \code{\link{importance_rf}} as a
 shortcut for getting the feature importance in random forest prediction.
 }
 \examples{
-data(example_set, package = "notame")
-rf <- fit_rf(example_set, y = "Group")
+data(toy_notame_set, package = "notame")
+rf <- fit_rf(toy_notame_set, y = "Group")
 rf
 importance_rf(rf)
 

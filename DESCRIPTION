@@ -49,6 +49,7 @@ Suggests:
     mixOmics,
     MuMIn,
     MUVR2,
+    notameViz,
     PERMANOVA,
     PK,
     randomForest,

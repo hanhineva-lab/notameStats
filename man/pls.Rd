@@ -21,6 +21,7 @@ mixomics_pls_optimize(
   object,
   y,
   ncomp,
+  plot_perf = FALSE,
   folds = 5,
   nrepeat = 50,
   all_features = FALSE,
@@ -33,6 +34,7 @@ mixomics_spls_optimize(
   object,
   y,
   ncomp,
+  plot_perf = FALSE,
   n_features = c(seq_len(10), seq(20, 300, 10)),
   folds = 5,
   nrepeat = 50,
@@ -62,6 +64,8 @@ in the model, in addition to molecular features}
 \item{...}{any parameters passed to 
 \code{\link[mixOmics]{pls}} or \code{\link[mixOmics]{spls}}}
 
+\item{plot_perf}{plot performance of models in cross-validation}
+
 \item{folds}{the number of folds to use in k-fold cross validation}
 
 \item{nrepeat}{the number of times to repeat the cross validation. Lower 
@@ -89,18 +93,18 @@ components and features}
 }
 }
 \examples{
-data(example_set, package = "notame")
-pls_res <- mixomics_pls(example_set, y = "Injection_order", ncomp = 3)
+data(toy_notame_set, package = "notame")
+pls_res <- mixomics_pls(toy_notame_set, y = "Injection_order", ncomp = 3)
 # Cross-validation repeated only 5 times for quick run time 
-pls_opt <- mixomics_pls_optimize(example_set, 
+pls_opt <- mixomics_pls_optimize(toy_notame_set, 
   y = "Injection_order", ncomp = 3, nrepeat = 5)
-spls_opt <- mixomics_spls_optimize(example_set,
+spls_opt <- mixomics_spls_optimize(toy_notame_set,
   y = "Injection_order", ncomp = 3,
-  n_features <- c(1:10, 12, 15, 20), nrepeat = 5
+  n_features = c(1:10, 12, 15, 20), nrepeat = 5
 )
 # Plot score plot of any final model
-plot_mixomics_pls(pls_opt, 
-  Y = colData(example_set)["Injection_order"], y = "Injection_order", 
+notameViz::plot_mixomics_pls(pls_res, 
+  Y = colData(toy_notame_set)["Injection_order"], y = "Injection_order", 
   title = "PLS: first 2 components and the outcome variable")
 }
 \seealso{

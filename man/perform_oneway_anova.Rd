@@ -44,8 +44,8 @@ For example, if testing for equality of means in study groups, use
 "Feature ~ Group".
 }
 \examples{
-data(example_set, package = "notame")
-perform_oneway_anova(example_set, formula_char = "Feature ~ Group")
+data(toy_notame_set, package = "notame")
+perform_oneway_anova(toy_notame_set, formula_char = "Feature ~ Group")
 
 }
 \seealso{

@@ -28,9 +28,9 @@ AUCs. This object can then be  used to compute results of e.g. t-tests of
 AUCs between groups.
 }
 \examples{
-data(example_set, package = "notame")
+data(toy_notame_set, package = "notame")
 # Drop QC samples before computing AUCs
-aucs <- perform_auc(notame::drop_qcs(example_set), time = "Time", 
+aucs <- perform_auc(notame::drop_qcs(toy_notame_set), time = "Time", 
                     subject = "Subject_ID", group = "Group")
 # t-test with the AUCs
 t_test_results <- perform_t_test(aucs, formula_char = "Feature ~ Group")

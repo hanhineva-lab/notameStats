@@ -1,11 +1,11 @@
 context("Testing statistics")
 
-data(example_set, package = "notame")
+data(toy_notame_set, package = "notame")
 
 # Summary statistics ----
 test_that("summary statistics work without grouping", {
-  smry <- summary_statistics(mark_nas(example_set, 0))
-  ex <- assay(mark_nas(example_set, 0))
+  smry <- summary_statistics(mark_nas(toy_notame_set, 0))
+  ex <- assay(mark_nas(toy_notame_set, 0))
 
   for (fun in c("finite_mean", "finite_sd", "finite_median", "finite_mad")) {
     expect_equal(unname(apply(ex, 1, fun)), smry[, gsub("finite_", "", fun)])
@@ -16,8 +16,8 @@ test_that("summary statistics work without grouping", {
 
 
 test_that("summary statistics work with grouping", {
-  smry <- summary_statistics(mark_nas(example_set, 0), grouping_cols = "Group")
-  exa <- assay(mark_nas(example_set[, example_set$Group == "A"], 0))
+  smry <- summary_statistics(mark_nas(toy_notame_set, 0), grouping_cols = "Group")
+  exa <- assay(mark_nas(toy_notame_set[, toy_notame_set$Group == "A"], 0))
 
   for (fun in c("finite_mean", "finite_sd", "finite_median", "finite_mad")) {
     expect_equal(unname(apply(exa, 1, fun)), smry[, gsub("finite", "A", fun)])
@@ -25,7 +25,7 @@ test_that("summary statistics work with grouping", {
   expect_equal(unname(apply(exa, 1, finite_quantile, probs = 0.25)), smry$A_Q25)
   expect_equal(unname(apply(exa, 1, finite_quantile, probs = 0.75)), smry$A_Q75)
 
-  exb <- assay(mark_nas(example_set[, example_set$Group == "B"], 0))
+  exb <- assay(mark_nas(toy_notame_set[, toy_notame_set$Group == "B"], 0))
 
   for (fun in c("finite_mean", "finite_sd", "finite_median", "finite_mad")) {
     expect_equal(unname(apply(exb, 1, fun)), smry[, gsub("finite", "B", fun)])
@@ -35,7 +35,7 @@ test_that("summary statistics work with grouping", {
 })
 
 test_that("summary statistics work with all NA features", {
-  ex_set_na <- mark_nas(example_set, 0)
+  ex_set_na <- mark_nas(toy_notame_set, 0)
   assay(ex_set_na)[1, ] <- NA
 
   smry <- summary_statistics(ex_set_na)
@@ -47,7 +47,7 @@ test_that("summary statistics work with all NA features", {
 
 # Cohen's D ----
 test_that("Cohen's d works", {
-  ex <- example_set |>
+  ex <- toy_notame_set |>
     drop_qcs() |>
     mark_nas(0)
   cd <- ex |>
@@ -81,7 +81,7 @@ test_that("Cohen's d works", {
 })
 
 test_that("Cohen's d work with all NA features", {
-  ex_set_na <- drop_qcs(mark_nas(example_set, 0))
+  ex_set_na <- drop_qcs(mark_nas(toy_notame_set, 0))
   assay(ex_set_na)[1:2, ] <- NA
 
   cohd <- cohens_d(ex_set_na, group = "Group")
@@ -92,22 +92,22 @@ test_that("Cohen's d work with all NA features", {
 })
 
 test_that("Cohen's d data checking works", {
-  ex <- example_set
+  ex <- toy_notame_set
   ex$Group <- c(1, 2)
   expect_error(cohens_d(ex, group = "Group", id = "Subject_ID", time = "Time"),
                "column is not a factor")
 
-  ex <- example_set
+  ex <- toy_notame_set
   ex$Time <- c(1, 2)
   expect_error(cohens_d(ex, group = "Group", id = "Subject_ID", time = "Time"),
                "column is not a factor")
 
-  ex <- example_set
+  ex <- toy_notame_set
   ex$Group <- factor(1)
   expect_error(cohens_d(ex, group = "Group", id = "Subject_ID", time = "Time"), 
                         "should have at least two levels")
 
-  ex <- example_set
+  ex <- toy_notame_set
   ex$Time <- factor(1)
   expect_error(cohens_d(ex, group = "Group", id = "Subject_ID", time = "Time"), 
                "should have at least two levels")
@@ -115,7 +115,7 @@ test_that("Cohen's d data checking works", {
 
 # Fold change ----
 test_that("Fold change works", {
-  ex <- example_set |>
+  ex <- toy_notame_set |>
     mark_nas(0)
   cd <- ex |>
     combined_data()
@@ -148,7 +148,7 @@ test_that("Fold change works", {
 })
 
 test_that("Fold change works with all NA features", {
-  ex_set_na <- drop_qcs(mark_nas(example_set, 0))
+  ex_set_na <- drop_qcs(mark_nas(toy_notame_set, 0))
   assay(ex_set_na)[1:2, ] <- NA
 
   foldc <- fold_change(ex_set_na, group = "Group")
@@ -186,14 +186,14 @@ test_that("P-value correction works", {
 
 # Linear model ----
 test_that("Linear model works", {
-  cd <- combined_data(drop_qcs(example_set))
+  cd <- combined_data(drop_qcs(toy_notame_set))
   lm_fit <- stats::lm(HILIC_neg_259_9623a4_4322 ~ Time,
     data = cd
   )
   smry <- summary(lm_fit)
 
   # Works for a simple example
-  lm_res <- perform_lm(drop_qcs(example_set),
+  lm_res <- perform_lm(drop_qcs(toy_notame_set),
     formula_char = "Feature ~ Time"
   )
 
@@ -205,18 +205,18 @@ test_that("Linear model works", {
   expect_equal(lm_res$Adj_R2[1], smry$adj.r.squared)
 
   # Works with column with only NA values
-  ex_set_na <- drop_qcs(mark_nas(example_set, 0))
+  ex_set_na <- drop_qcs(mark_nas(toy_notame_set, 0))
   assay(ex_set_na)[1:2, ] <- NA
 
   lm_res <- perform_lm(ex_set_na,
     formula_char = "Feature ~ Time"
   )
-  expect_equal(nrow(lm_res), nrow(assay(example_set)))
-  expect_equal(lm_res$Feature_ID, rownames(example_set))
+  expect_equal(nrow(lm_res), nrow(assay(toy_notame_set)))
+  expect_equal(lm_res$Feature_ID, rownames(toy_notame_set))
   expect_true(all(is.na(lm_res[1:2, 2:ncol(lm_res)])))
 
   # FDR correction ignored for flagged compounds
-  ex_set_na <- flag_quality(mark_nas(example_set, value = 0))
+  ex_set_na <- flag_quality(mark_nas(toy_notame_set, value = 0))
   lm_res2 <- perform_lm(ex_set_na, formula_char = "Feature ~ Group")
   flag_idx <- !is.na(flag(ex_set_na))
   expect_true(all(is.na(lm_res2$Group_P_FDR[flag_idx])))
@@ -224,14 +224,14 @@ test_that("Linear model works", {
 
 # Logistic regression ----
 test_that("Logistic regression works", {
-  cd <- combined_data(drop_qcs(example_set))
+  cd <- combined_data(drop_qcs(toy_notame_set))
   glm_fit <- stats::glm(Group ~ HILIC_neg_259_9623a4_4322,
     data = cd,
     family = stats::binomial()
   )
   smry <- summary(glm_fit)
 
-  glm_res <- perform_logistic(drop_qcs(example_set),
+  glm_res <- perform_logistic(drop_qcs(toy_notame_set),
     formula_char = "Group ~ Feature"
   )
 
@@ -244,19 +244,19 @@ test_that("Logistic regression works", {
   expect_equal(glm_res$Feature_UCI95[1], stats::confint(glm_fit)[2, 2])
 
 
-  ex_set_na <- drop_qcs(mark_nas(example_set, 0))
+  ex_set_na <- drop_qcs(mark_nas(toy_notame_set, 0))
   assay(ex_set_na)[1:2, ] <- NA
 
   glm_res <- perform_logistic(ex_set_na,
     formula_char = "Group ~ Feature"
   )
-  expect_equal(nrow(glm_res), nrow(assay(example_set)))
-  expect_equal(glm_res$Feature_ID, rownames(example_set))
+  expect_equal(nrow(glm_res), nrow(assay(toy_notame_set)))
+  expect_equal(glm_res$Feature_ID, rownames(toy_notame_set))
   expect_true(all(is.na(glm_res[1:2, 2:ncol(glm_res)])))
 })
 
 test_that("Cohens D values are counted right", {
-  object <- drop_qcs(example_set)[, 1:30]
+  object <- drop_qcs(toy_notame_set)[, 1:30]
   colData(object)$Group <- factor(c("A", "B", "C"))
 
   data <- combined_data(object)
@@ -287,7 +287,7 @@ test_that("Cohens D values are counted right", {
 })
 
 test_that("Cohens D values between time points are counted right", {
-  object <- drop_qcs(example_set[, 1:30])
+  object <- drop_qcs(toy_notame_set[, 1:30])
   colData(object)$Group <- factor(rep(c(rep("A", 3), rep("B", 3), rep("C", 2)), 3))
   colData(object)$Subject_ID <- as.character(rep(1:8, 3))
   colData(object)$Time <- factor(c(rep(1, 8), rep(2, 8), rep(3, 8)))
@@ -382,7 +382,7 @@ test_that("Cohens D values between time points are counted right", {
 })
 
 test_that("Cohens D warnings work", {
-  object <- drop_qcs(example_set[, 1:30])
+  object <- drop_qcs(toy_notame_set[, 1:30])
   colData(object)$Group <- factor(
     rep(c(rep("A", 3), rep("B", 3), rep("C", 2)), 3))
   colData(object)$Subject_ID <- as.character(rep(1:8, 3))
@@ -418,7 +418,7 @@ test_that("Cohens D warnings work", {
 
 # Paired t-test ----
 test_that("Paired t-test works", {
-  ex <- drop_qcs(example_set)
+  ex <- drop_qcs(toy_notame_set)
   cd <- combined_data(ex)
   t_res <- perform_t_test(ex, formula_char = "Feature ~ Time", 
                           id = "Subject_ID", is_paired = TRUE)
@@ -428,7 +428,7 @@ test_that("Paired t-test works", {
   # Check comparison order
   expect_equal(t_res[t_res$Feature_ID == feature, 3], mean1 - mean2)
   # Check row names
-  expect_identical(rownames(t_res), rownames(drop_qcs(example_set)))
+  expect_identical(rownames(t_res), rownames(drop_qcs(toy_notame_set)))
   # Check column names
   expect_identical(colnames(t_res), c(
     "Feature_ID",
@@ -448,7 +448,7 @@ test_that("Paired t-test works", {
 
 # Pairwise t-tests ----
 test_that("Pairwise t-test works", {
-  object <- drop_qcs(example_set[, 1:30])
+  object <- drop_qcs(toy_notame_set[, 1:30])
   colData(object)$Group <- factor(
     rep(c(rep("A", 3), rep("B", 3), rep("C", 2)), 3))
   colData(object)$Subject_ID <- factor(rep(1:8, 3))
@@ -456,7 +456,7 @@ test_that("Pairwise t-test works", {
 
   pwt_res <- perform_t_test(object, formula_char = "Feature ~ Time")
 
-  expect_identical(rownames(pwt_res), rownames(drop_qcs(example_set)))
+  expect_identical(rownames(pwt_res), rownames(drop_qcs(toy_notame_set)))
   prefixes <- c("1_vs_2_t_test_", "1_vs_3_t_test_", "2_vs_3_t_test_")
   suffixes <- c("Statistic", "Estimate", "LCI95", 
                 "UCI95", "P", "P_FDR")
@@ -481,7 +481,7 @@ test_that("Pairwise t-test works", {
 })
 
 test_that("Pairwise paired t-test works", {
-  object <- drop_qcs(example_set[, 1:30])
+  object <- drop_qcs(toy_notame_set[, 1:30])
   colData(object)$Group <- factor(
     rep(c(rep("A", 3), rep("B", 3), rep("C", 2)), 3))
   colData(object)$Subject_ID <- factor(rep(1:8, 3))
@@ -492,7 +492,7 @@ test_that("Pairwise paired t-test works", {
   pwpt_res <- perform_t_test(object, formula_char = "Feature ~ Time", 
                              id = "Subject_ID", is_paired = TRUE)
 
-  expect_identical(rownames(pwpt_res), rownames(drop_qcs(example_set)))
+  expect_identical(rownames(pwpt_res), rownames(drop_qcs(toy_notame_set)))
   prefixes <- paste0(c("1_vs_2_", "1_vs_3_", "2_vs_3_"), "t_test_")
   suffixes <- c("Statistic", "Estimate", "LCI95", "UCI95", "P", "P_FDR")
   cols <- expand.grid(prefixes, suffixes)
@@ -512,7 +512,7 @@ test_that("Pairwise paired t-test works", {
 })
 
 test_that("Mann-Whitney U-tests work", {
-  object <- drop_qcs(example_set)
+  object <- drop_qcs(toy_notame_set)
 
   get_u <- function(a) {
     x_mat <- a[object$Group == "A"]
@@ -545,7 +545,7 @@ test_that("Mann-Whitney U-tests work", {
 })
 
 test_that("Wilcoxon signed rank tests work", {
-  object <- drop_qcs(example_set)
+  object <- drop_qcs(toy_notame_set)
   flag(object)[1:2] <- "Flagged"
   get_median_diffs <- function(a) {
     x_mat <- a[object$Time == 1][order(object$Subject_ID[object$Time == 1])]
@@ -570,7 +570,7 @@ test_that("Wilcoxon signed rank tests work", {
 })
 
 test_that("Pairwise Mann-Whitney tests works", {
-  object <- drop_qcs(example_set[, 1:30])
+  object <- drop_qcs(toy_notame_set[, 1:30])
   colData(object)$Group <- factor(
     rep(c(rep("A", 3), rep("B", 3), rep("C", 2)), 3))
   colData(object)$Subject_ID <- factor(rep(1:8, 3))
@@ -585,7 +585,7 @@ test_that("Pairwise Mann-Whitney tests works", {
   pwnp_res <- suppressWarnings(
     perform_non_parametric(object, formula_char = "Feature ~ Time"))
 
-  expect_identical(rownames(pwnp_res), rownames(drop_qcs(example_set)))
+  expect_identical(rownames(pwnp_res), rownames(drop_qcs(toy_notame_set)))
   prefixes <- paste0(c("1_vs_2_", "1_vs_3_", "2_vs_3_"), "Mann_Whitney_")
   suffixes <- c("Statistic", "Estimate", "LCI95", "UCI95", "P", "P_FDR")
   cols <- expand.grid(suffixes, prefixes)
@@ -600,7 +600,7 @@ test_that("Pairwise Mann-Whitney tests works", {
     pwnp_res)
   # These shouldn't match cause paired mode
   # In this case 4 pairs in each
-  #object <- drop_qcs(mark_nas(example_set, value = 0))
+  #object <- drop_qcs(mark_nas(toy_notame_set, value = 0))
   expect_failure(expect_identical(
     suppressWarnings(perform_non_parametric(object,
                                             formula_char = "Feature ~ Time", 
@@ -611,7 +611,7 @@ test_that("Pairwise Mann-Whitney tests works", {
 })
 
 test_that("Assay control works (with correlation tests)", {
-  ex_set <- example_set[1:10, ]
+  ex_set <- toy_notame_set[1:10, ]
   names(assays(ex_set)) <- c("original")
   # Don't require assay.type if object has only one assay for consistence
   correlations_one <- perform_correlation_tests(ex_set,
@@ -646,7 +646,7 @@ test_that("Assay control works (with correlation tests)", {
 })
 
 test_that("Simple tests work in cases where alternative levels for confidence intervals are returned in case 95% confidence interval can't be computed", {
-  ex_set <- example_set
+  ex_set <- toy_notame_set
   assay(ex_set)[1, ] <- stats::runif(ncol(ex_set), 3000, 3000)
   res <- perform_non_parametric(drop_qcs(ex_set), 
                                 formula_char = "Feature ~ Time", 
@@ -656,7 +656,7 @@ test_that("Simple tests work in cases where alternative levels for confidence in
 })
 
 test_that("Simple tests return all features despite errors for single features", {
-  ex_set <- example_set
+  ex_set <- toy_notame_set
   assay(ex_set)[1, ex_set$Group == "A"] <- NA
   res <- perform_t_test(drop_qcs(ex_set), formula_char = "Feature ~ Group")
   expect_true(all(lapply(res[1, -1], function(col_value) is.na(col_value))))

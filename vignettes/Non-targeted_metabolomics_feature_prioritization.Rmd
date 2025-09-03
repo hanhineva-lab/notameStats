@@ -14,87 +14,119 @@ bibliography: references.bib
 biblio-style: apalike
 ---
 
+The statistics functionality in `notameStats` aims to identify interesting features across study groups. See the project example vignette in the notame package and [notame website reference index](https://hanhineva-lab.github.io/notame/reference/index.html) for listing of functions. Similar functionality is available in several packages.
+
+Unless otherwise stated, all functions return separate data frames or other objects with the results. These can be then added to the object feature data using ```join_rowData(object, results)```. The reason for not adding these to the objects automatically is that most of the functions return excess information that is not always worth saving. We encourage you to choose which information is important to you.
+
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(
-  eval = FALSE,
-  collapse = TRUE,
-  comment = "##"
+  comment = "##",
+  message = FALSE
 )
 ```
 
-# Statistics
+# Installation
 
-This vignette provides an overview of the different statistical tests provided in the package. The first section discusses univariate tests, which are repeated for each feature.
+To install `notameStats`, install `BiocManager` first, if it is not installed.
+Afterwards use the `install` function from `BiocManager` and load `notameStats`.
 
-Unless otherwise stated, all functions return separate data frames or other objects with the results. These can be then added to the object feature data using ```join_fData(object, results)```. The reason for not adding these to the objects automatically is that most of the functions return excess information that is not always worth saving. We encourage you to choose which information is important to you.
-
-## Univariate functions
-
-### summary statistics and effect sizes
-
-These functions provide summary statistics and effect sizes for all features:
-
-- Summary statistics (mean, sd, median, mad, quartiles): ```summary_statistics```  
-- Cohen's d: ```cohens_d```  
-- Fold changes between groups: ```fold_change```
-
-### Hypothesis tests
-
-These functions perform univariate hypothesis tests for each feature, report relevant statistics and correct the p-values using FDR correction. For features, where the model fails for some reason, all statistics are recorded as NA. **NOTE** setting ```all_features = FALSE``` does not prevent the tests on the flagged compounds, but only affects p-value correction, where flagged features are not included in the correction and thus do not have an FDR-corrected p-value. To prevent the testing of flagged features altogether, use ```drop_flagged``` before the tests.
-
-#### Formula interface
-
-Many R functions for statistical tests use a so-called formula interface. For example, the function ```lm``` that is used for fitting linear models uses the formula interface, so when predicting the fuel consumption (mpg - miles per gallon) by the car weight (wt) in the inbuilt mtcars dataset, we would run:
-
-```{r}
-lm(mpg ~ wt, data = mtcars)
+```{r install, eval=FALSE}
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+BiocManager::install("notameStats")
 ```
 
-For many of the univariate statistical test functions in this package use the formula interface, where the formula is provided as a character, with one special condition: the word "Feature" will get replaced at each iteration by the corresponding feature name. So for example, when testing if any of the features predict the difference between study groups, the formula would be: "Group ~ Feature". Or, when testing if group and time point affect metabolite levels, the formula could be "Feature ~ Group + Time + Group:Time", with the last term being an interaction term ("Feature ~ Group * Time" is equivalent).
+```{r, message = FALSE}
+library(notame)
+library(notameViz)
+library(notameStats)
 
-Now that we know how the formula interface looks like, let's list the univariate statistical functions available:
+ppath <- tempdir()
+init_log(log_file = file.path(ppath, "log.txt"))
 
-- linear models: ```perform_lm```  
-- logistic regression: ```perform_logistic```  
-- linear mixed models: ```perform_lmer``` (uses lmer function from the lme4 package, with lmerTest package for p-values)  
-- tests of equality of variance: ```perform_homoscedasticity_tests```
-- Kruskal-Wallis test: ```perform_kruskal_wallis```  
-- Welch's ANOVA and Classic ANOVA: ```perform_oneway_anova```  
-- two-sample t-test (Welch or Student): ```perform_t_test``` 
+data(hilic_neg_sample, package = "notame")
+data(toy_notame_set, package = "notame")
+```
+
+# Univariate functions
+
+## Summary statistics and effect sizes
+
+It is straightforward to provide summary statistics and effect sizes for all features:
+
+```{r}
+toy_notame_set <- mark_nas(toy_notame_set, value = 0)
+
+# Impute missing values, required especially for multivariate methods
+toy_notame_set <- notame::impute_rf(toy_notame_set)
+
+sum_stats <- summary_statistics(toy_notame_set, grouping_cols = "Group")
+toy_notame_set <- notame::join_rowData(toy_notame_set, sum_stats)
+
+d_results <- cohens_d(toy_notame_set, group = "Group")
+toy_notame_set <- notame::join_rowData(toy_notame_set, d_results)
+
+fc <- fold_change(toy_notame_set, group = "Group")
+toy_notame_set <- notame::join_rowData(toy_notame_set, fc)
+
+colnames(rowData(toy_notame_set))
+```
+
+## Univariate tests
+
+These functions perform univariate hypothesis tests for each feature, report relevant statistics and correct the p-values using FDR correction. For features, where the model fails for some reason, all statistics are recorded as NA. **NOTE** setting ```all_features = FALSE``` does not prevent the tests on the flagged compounds, but only affects p-value correction, where flagged features are not included in the correction and thus do not have an FDR-corrected p-value. To prevent the testing of flagged features altogether, use ```notame::drop_flagged``` before the tests.
+
+Most of the univariate statistical test functions in this package use the formula interface, where the formula is provided as a character, with one special condition: the word "Feature" will get replaced at each iteration by the corresponding feature name. So for example, when testing if any of the features predict the difference between study groups, the formula would be: "Group ~ Feature". Or, when testing if group and time point affect metabolite levels, the formula could be "Feature ~ Group + Time + Group:Time", with the last term being an interaction term ("Feature ~ Group * Time" is equivalent).
+
+```{r}
+
+toy_notame_set <- notame::flag_quality(toy_notame_set)
+toy_notame_set <- notame::drop_qcs(toy_notame_set)
+
+lm_results <- perform_lm(toy_notame_set, 
+  formula_char = "Feature ~ Group + Time")
+
+```
 
 Most of the functions allow you to pass extra arguments to the underlying functions performing the actual tests, so you can set custom contrasts etc.
 
-### Functions not using the formula interface
+Functions not using the formula interface include correlation tests between molecular features and/or sample information variable (`perform_correlation_tests()`) and area under curve computation (`perform_auc()`).
 
-Some functions do not use the formula interface. They include
+# Multivariate analysis
 
-- pairwise t-tests: ```perform_pairwise_t_test```
-- correlation tests between molecular features and/or phenotype variable: ```perform_correlation_tests```
-- Area under curve computation: ```perform_auc```
+## MUVR
 
+notame provides a wrapper for the MUVR analysis (Multivariate methods with Unbiased Variable selection in R, [shi2019variable] using the MUVR2 package. MUVR2 allows fitting both RF and PLS models with clever variable selection for both finding a minimal subset of features that achieves a good performance AND for finding all relevant features. There is also a set of useful visualizations in `MUVR2`.
+  
+```{r}
+# nRep = 2 for quick example
+pls_model <- muvr_analysis(toy_notame_set, 
+  y = "Injection_order", nRep = 2, method = "PLS")
+  
+class(pls_model)
 
-## Multivariate functions
+```
 
-### MUVR
+## Random forest
 
-notame provides a wrapper for the MUVR analysis (Multivariate methods with Unbiased Variable selection in R, [shi2019variable](https://gitlab.com/CarlBrunius/MUVR/)). MUVR allows fitting both RF and PLS models with clever variable selection for both finding a minimal subset of features that achieves a good performance AND for finding all relevant features.
+For random forest models, we also use the `randomForest` package. We also include a wrapper for getting feature importance.
 
-```muvr_analysis``` provides the wrapper for MetaboSet objects
+```{r}
+rf <- fit_rf(toy_notame_set, y = "Group")
 
-### Random forest
+class(rf)
 
-It is possible to fir random forest models with the randomForest package.
+head(importance_rf(rf))
+```
 
-- ```fit_rf``` fits a random forest predicting a column in the sample information (```pData(object)```) by the features  
-- ```importance_rf``` extracts the feature importance in random forest prediction in a nice format
+## PLS(-DA)
 
+There are also wrappers for PLS(-DA) functions from the mixOmics package.
 
-### PLS(-DA)
+```{r}
+pls_res <- mixomics_pls(toy_notame_set, y = "Injection_order", ncomp = 3)
 
-There are also wrappers for PLS(-DA) functions from the mixOmics package:
-
-- ```mixomics_pls and mixomics_plsda``` fits classic PLS(-DA)  
-- ```mixomics_pls and mixomics_plsda_optimize``` finds the optimal number of components for PLS(-DA)  
-- ```mixomics_spls and mixomics_splsda_optimize``` fits sPLS(-DA), which uses a clever variable selection scheme to select the optimal number of components AND the optimal number of features for each component.
+class(pls_res)
+```
 
 # References

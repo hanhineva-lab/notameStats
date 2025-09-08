@@ -103,9 +103,13 @@ spls_opt <- mixomics_spls_optimize(toy_notame_set,
   n_features = c(1:10, 12, 15, 20), nrepeat = 5
 )
 # Plot score plot of any final model
-notameViz::plot_mixomics_pls(pls_res, 
-  Y = colData(toy_notame_set)["Injection_order"], y = "Injection_order", 
-  title = "PLS: first 2 components and the outcome variable")
+mixOmics::plotIndiv(pls_res,  
+  comp = seq_len(2), group = toy_notame_set$Group, 
+  ind.names = FALSE, title = "PLS scores plot", legend = TRUE)
+
+# Proportion of variance explained
+pls_res$prop_expl_var$X[seq_len(2)] |> round(digits = 3) * 100
+
 }
 \seealso{
 \code{\link[mixOmics]{pls}}, \code{\link[mixOmics]{perf}},

@@ -152,9 +152,13 @@ importance_rf <- function(rf) {
 #'   n_features = c(1:10, 12, 15, 20), nrepeat = 5
 #' )
 #' # Plot score plot of any final model
-#' notameViz::plot_mixomics_pls(pls_res, 
-#'   Y = colData(toy_notame_set)["Injection_order"], y = "Injection_order", 
-#'   title = "PLS: first 2 components and the outcome variable")
+#' mixOmics::plotIndiv(pls_res,  
+#'   comp = seq_len(2), group = toy_notame_set$Group, 
+#'   ind.names = FALSE, title = "PLS scores plot", legend = TRUE)
+#' 
+#' # Proportion of variance explained
+#' pls_res$prop_expl_var$X[seq_len(2)] |> round(digits = 3) * 100
+#' 
 #' @name pls
 #' @seealso \code{\link[mixOmics]{pls}}, \code{\link[mixOmics]{perf}},
 #' \code{\link[mixOmics]{spls}}, \code{\link[mixOmics]{tune.spls}}
@@ -224,11 +228,7 @@ mixomics_pls_optimize <- function(object, y, ncomp, plot_perf = FALSE,
                             all_features = all_features,
                             covariates = covariates, assay.type = from, ...)
   if (plot_perf) {
-    if (!requireNamespace("notameViz", quietly = TRUE)) {
-      stop("Package \"notameViz\" needed for this function to work.",
-            " Please install it.", call. = FALSE)
-    }
-    p <- notameViz::plot_mixomics_perf(perf_pls, ncomp = ncomp)
+    p <- plot(perf_pls, measure = "MSEP")
     return(list(model = pls_final, plot_perf = p))
   }
   pls_final
@@ -276,8 +276,7 @@ mixomics_spls_optimize <- function(object, y, ncomp, plot_perf = FALSE,
 
   if (plot_perf) {
     # Plot error for each component with different number of features
-    plot(plot(tuned_spls))
-    p <- grDevices::recordPlot()
+    p < plot(tuned_spls, measure = "MSEP")
     return(list(model = spls_final, plot_perf = p))
   }
   spls_final
@@ -346,7 +345,6 @@ mixomics_spls_optimize <- function(object, y, ncomp, plot_perf = FALSE,
 #'   comp = seq_len(2), group = notame::drop_qcs(toy_notame_set)$Group, 
 #'   ind.names = FALSE, 
 #'   title = "prediction areas", legend = TRUE, background = background)
-
 #' 
 #' @name pls_da
 #' @seealso \code{\link[mixOmics]{plsda}}, \code{\link[mixOmics]{perf}},
@@ -427,7 +425,7 @@ mixomics_plsda_optimize <- function(object, y, ncomp, plot_perf = FALSE,
     plot(perf_plsda, col = mixOmics::color.mixo(seq_len(3)), 
          sd = TRUE, legend.position = "horizontal")
     graphics::title("Performance of PLS-DA models")
-    p <- grDevices::recordPlot()
+    p <- recordPlot()
     return(list(model = plsda_final, plot_perf = p))
   }
 
@@ -480,8 +478,7 @@ mixomics_splsda_optimize <- function(object, y, ncomp, dist, plot_perf = FALSE,
                                    keepX = keep_x)
   if (plot_perf) {
     # Plot error rate of different components as a function of number of features
-    p <- plot(plot(tuned_splsda))
-    p <- grDevices::recordPlot()
+    p <- plot(tuned_splsda)
     return(list(model = splsda_final, plot_perf = p))
   }
   

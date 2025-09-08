@@ -14,9 +14,18 @@ bibliography: references.bib
 biblio-style: apalike
 ---
 
-The statistics functionality in `notameStats` aims to identify interesting features across study groups. See the project example vignette in the notame package and [notame website reference index](https://hanhineva-lab.github.io/notame/reference/index.html) for listing of functions. Similar functionality is available in several packages.
+The statistics functionality in `notameStats` aims to identify interesting 
+features across study groups. See the project example vignette in the notame 
+package and [notame website reference index](https://hanhineva-lab.github.io/
+notame/reference/index.html) for listing of functions. Similar functionality is 
+available in several packages.
 
-Unless otherwise stated, all functions return separate data frames or other objects with the results. These can be then added to the object feature data using ```join_rowData(object, results)```. The reason for not adding these to the objects automatically is that most of the functions return excess information that is not always worth saving. We encourage you to choose which information is important to you.
+Unless otherwise stated, all functions return separate data frames or other 
+objects with the results. These can be then added to the object feature data 
+using ```join_rowData(object, results)```. The reason for not adding these to 
+the objects automatically is that most of the functions return excess 
+information that is not always worth saving. We encourage you to choose which 
+information is important to you.
 
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(
@@ -52,7 +61,8 @@ data(toy_notame_set, package = "notame")
 
 ## Summary statistics and effect sizes
 
-It is straightforward to provide summary statistics and effect sizes for all features:
+It is straightforward to provide summary statistics and effect sizes for all 
+features:
 
 ```{r}
 toy_notame_set <- mark_nas(toy_notame_set, value = 0)
@@ -74,9 +84,23 @@ colnames(rowData(toy_notame_set))
 
 ## Univariate tests
 
-These functions perform univariate hypothesis tests for each feature, report relevant statistics and correct the p-values using FDR correction. For features, where the model fails for some reason, all statistics are recorded as NA. **NOTE** setting ```all_features = FALSE``` does not prevent the tests on the flagged compounds, but only affects p-value correction, where flagged features are not included in the correction and thus do not have an FDR-corrected p-value. To prevent the testing of flagged features altogether, use ```notame::drop_flagged``` before the tests.
+These functions perform univariate hypothesis tests for each feature, report 
+relevant statistics and correct the p-values using FDR correction. For 
+features, where the model fails for some reason, all statistics are recorded as 
+NA. **NOTE** setting ```all_features = FALSE``` does not prevent the tests on 
+the flagged compounds, but only affects p-value correction, where flagged 
+features are not included in the correction and thus do not have an FDR-
+corrected p-value. To prevent the testing of flagged features altogether, use 
+`notame::drop_flagged` before the tests.
 
-Most of the univariate statistical test functions in this package use the formula interface, where the formula is provided as a character, with one special condition: the word "Feature" will get replaced at each iteration by the corresponding feature name. So for example, when testing if any of the features predict the difference between study groups, the formula would be: "Group ~ Feature". Or, when testing if group and time point affect metabolite levels, the formula could be "Feature ~ Group + Time + Group:Time", with the last term being an interaction term ("Feature ~ Group * Time" is equivalent).
+Most of the univariate statistical test functions in this package use the 
+formula interface, where the formula is provided as a character, with one 
+special condition: the word "Feature" will get replaced at each iteration by 
+the corresponding feature name. So for example, when testing if any of the 
+features predict the difference between study groups, the formula would be: 
+"Group ~ Feature". Or, when testing if group and time point affect metabolite 
+levels, the formula could be "Feature ~ Group + Time + Group:Time", with the 
+last term being an interaction term ("Feature ~ Group * Time" is equivalent).
 
 ```{r}
 
@@ -88,15 +112,24 @@ lm_results <- perform_lm(toy_notame_set,
 
 ```
 
-Most of the functions allow you to pass extra arguments to the underlying functions performing the actual tests, so you can set custom contrasts etc.
+Most of the functions allow you to pass extra arguments to the underlying 
+functions performing the actual tests, so you can set custom contrasts etc.
 
-Functions not using the formula interface include correlation tests between molecular features and/or sample information variable (`perform_correlation_tests()`) and area under curve computation (`perform_auc()`).
+Functions not using the formula interface include correlation tests between 
+molecular features and/or sample information variable 
+(`perform_correlation_tests()`) and area under curve computation 
+(`perform_auc()`).
 
 # Multivariate analysis
 
 ## MUVR
 
-notame provides a wrapper for the MUVR analysis (Multivariate methods with Unbiased Variable selection in R, [shi2019variable] using the MUVR2 package. MUVR2 allows fitting both RF and PLS models with clever variable selection for both finding a minimal subset of features that achieves a good performance AND for finding all relevant features. There is also a set of useful visualizations in `MUVR2`.
+notame provides a wrapper for the MUVR analysis (Multivariate methods with 
+Unbiased Variable selection in R, [shi2019variable] using the MUVR2 package. 
+MUVR2 allows fitting both RF and PLS models with clever variable selection for 
+both finding a minimal subset of features that achieves a good performance AND 
+for finding all relevant features. There is also a set of useful visualizations 
+in `MUVR2`.
   
 ```{r}
 # nRep = 2 for quick example
@@ -109,7 +142,8 @@ class(pls_model)
 
 ## Random forest
 
-For random forest models, we also use the `randomForest` package. We also include a wrapper for getting feature importance.
+For random forest models, we also use the `randomForest` package. We also 
+include a wrapper for getting feature importance.
 
 ```{r}
 rf <- fit_rf(toy_notame_set, y = "Group")
@@ -129,4 +163,12 @@ pls_res <- mixomics_pls(toy_notame_set, y = "Injection_order", ncomp = 3)
 class(pls_res)
 ```
 
+# Session information
+
+```{r, echo = FALSE, results = 'markup'}
+sessionInfo()
+```
+
 # References
+
+

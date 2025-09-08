@@ -276,7 +276,7 @@ mixomics_spls_optimize <- function(object, y, ncomp, plot_perf = FALSE,
 
   if (plot_perf) {
     # Plot error for each component with different number of features
-    p < plot(tuned_spls, measure = "MSEP")
+    p <- plot(tuned_spls, measure = "MSEP")
     return(list(model = spls_final, plot_perf = p))
   }
   spls_final
@@ -425,7 +425,7 @@ mixomics_plsda_optimize <- function(object, y, ncomp, plot_perf = FALSE,
     plot(perf_plsda, col = mixOmics::color.mixo(seq_len(3)), 
          sd = TRUE, legend.position = "horizontal")
     graphics::title("Performance of PLS-DA models")
-    p <- recordPlot()
+    p <- grDevices::recordPlot()
     return(list(model = plsda_final, plot_perf = p))
   }
 
@@ -439,7 +439,8 @@ mixomics_splsda_optimize <- function(object, y, ncomp, dist, plot_perf = FALSE,
                                      n_features = c(seq_len(10), 
                                                     seq(20, 300, 10)),
                                      folds = 5, nrepeat = 50,
-                                     all_features = FALSE, covariates = NULL, assay.type = NULL, ...) {
+                                     all_features = FALSE, covariates = NULL, 
+                                     assay.type = NULL, ...) {
   if (!requireNamespace("mixOmics", quietly = TRUE)) {
     stop("Package \"mixOmics\" needed for this function to work.",
          " Please install it.", call. = FALSE)
@@ -477,7 +478,7 @@ mixomics_splsda_optimize <- function(object, y, ncomp, dist, plot_perf = FALSE,
   splsda_final <- mixOmics::splsda(predictors, outcome, ncomp = ncomp_opt,
                                    keepX = keep_x)
   if (plot_perf) {
-    # Plot error rate of different components as a function of number of features
+    # Plot error rate of different components as a function of n features
     p <- plot(tuned_splsda)
     return(list(model = splsda_final, plot_perf = p))
   }

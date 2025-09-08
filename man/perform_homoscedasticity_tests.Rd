@@ -40,7 +40,8 @@ For example, if testing for equality of variances in study groups, use
 }
 \examples{
 data(toy_notame_set, package = "notame")
-perform_homoscedasticity_tests(toy_notame_set, formula_char = "Feature ~ Group")
+perform_homoscedasticity_tests(toy_notame_set,
+  formula_char = "Feature ~ Group")
 
 }
 \seealso{

@@ -43,7 +43,7 @@
 summary_statistics <- function(object, grouping_cols = NULL,
                                assay.type = NULL) {
   from <- .get_from_name(object, assay.type)
-  object <- notame:::.check_object(object, pheno_cols = c(grouping_cols), 
+  object <- .check_object(object, pheno_cols = c(grouping_cols), 
                          assay.type = from)
   data <- combined_data(object, from)
   features <- rownames(object)
@@ -293,7 +293,7 @@ summarize_results <- function(df, remove = c("Intercept", "CI95", "Std_error",
 cohens_d <- function(object, group, id = NULL,
                      time = NULL, assay.type = NULL) {
   from <- .get_from_name(object, assay.type)
-  object <- notame:::.check_object(object, pheno_factors = c(group, time),
+  object <- .check_object(object, pheno_factors = c(group, time),
                           pheno_chars = id, pheno_cols = id, 
                           assay.type = from, feature_ID = TRUE)
   res <- NULL
@@ -357,7 +357,8 @@ cohens_d <- function(object, group, id = NULL,
 #' @export
 fold_change <- function(object, group, assay.type = NULL) {
   from <- .get_from_name(object, assay.type)
-  object <- notame:::.check_object(object, pheno_cols = group, assay.type = from)
+  object <- .check_object(object, pheno_cols = group, 
+                          assay.type = from)
   log_text("Starting to compute fold changes.")
   data <- combined_data(object, from)
   groups <- utils::combn(levels(data[, group]), 2)
@@ -513,7 +514,7 @@ perform_correlation_tests <- function(object, x, y = x, id = NULL,
   log_text("Starting correlation tests.")
   
   from1 <- .get_from_name(object, assay.type1)
-  object <- notame:::.check_object(object, pheno_cols = id, assay.type = from1)
+  object <- .check_object(object, pheno_cols = id, assay.type = from1)
   data1 <- combined_data(object, from1)
 
   if (!is.null(object2)) {
@@ -521,7 +522,7 @@ perform_correlation_tests <- function(object, x, y = x, id = NULL,
       stop("The objects have different numbers of samples")
     }
     from2 <- .get_from_name(object2, assay.type2)
-    object2 <- notame:::.check_object(object2, pheno_factors = id, assay.type = from2)
+    object2 <- .check_object(object2, pheno_factors = id, assay.type = from2)
     data2 <- combined_data(object2, from2)
     log_text("Performing correlation tests for two objects")
   } else {
@@ -645,7 +646,7 @@ perform_auc <- function(object, time, subject, group, assay.type = NULL) {
   log_text("Starting AUC computation")
   
   from <- .get_from_name(object, assay.type)
-  object <- notame:::.check_object(object, pheno_factors = c(time, group),
+  object <- .check_object(object, pheno_factors = c(time, group),
                           pheno_chars = subject, assay.type = from)
   data <- combined_data(object, from)
 
@@ -792,7 +793,7 @@ perform_lm <- function(object, formula_char, all_features = FALSE,
   log_text("Starting linear regression.")
   
   from <- .get_from_name(object, assay.type)
-  object <- notame:::.check_object(object, assay.type = from)
+  object <- .check_object(object, assay.type = from)
   
   lm_fun <- function(feature, formula, data) {
     # Try to fit the linear model
@@ -866,7 +867,7 @@ perform_lm_anova <- function(object, formula_char, all_features = FALSE,
                              lm_args = NULL, anova_args = NULL,
                              assay.type = NULL) {
   from <- .get_from_name(object, assay.type)
-  object <- notame:::.check_object(object, assay.type = from)
+  object <- .check_object(object, assay.type = from)
   log_text("Starting ANOVA tests")
 
   anova_fun <- function(feature, formula, data) {
@@ -943,7 +944,7 @@ perform_lm_anova <- function(object, formula_char, all_features = FALSE,
 perform_logistic <- function(object, formula_char, all_features = FALSE, 
                              assay.type = NULL, ...) {
   from <- .get_from_name(object, assay.type)
-  object <- notame:::.check_object(object, assay.type = from)
+  object <- .check_object(object, assay.type = from)
   log_text("Starting logistic regression")
 
   logistic_fun <- function(feature, formula, data) {
@@ -1156,7 +1157,7 @@ perform_lmer <- function(object, formula_char, all_features = FALSE,
   ci_method <- match.arg(ci_method)
   
   from <- .get_from_name(object, assay.type)
-  object <- notame:::.check_object(object, assay.type = from)
+  object <- .check_object(object, assay.type = from)
   results_df <- .perform_test(object, formula_char, .help_lmer, all_features,
                               packages = "lmerTest", ci_method = ci_method,
                               test_random = test_random, assay.type = from)
@@ -1212,7 +1213,8 @@ perform_lmer <- function(object, formula_char, all_features = FALSE,
 #'
 #' @examples
 #' data(toy_notame_set, package = "notame")
-#' perform_homoscedasticity_tests(toy_notame_set, formula_char = "Feature ~ Group")
+#' perform_homoscedasticity_tests(toy_notame_set,
+#'   formula_char = "Feature ~ Group")
 #'
 #' @seealso \code{\link{bartlett.test}}, \code{\link[car]{leveneTest}}, 
 #' \code{\link{fligner.test}}
@@ -1230,7 +1232,7 @@ perform_homoscedasticity_tests <- function(object, formula_char,
   log_text("Starting homoscedasticity tests.")
   
   from <- .get_from_name(object, assay.type)
-  object <- notame:::.check_object(object, assay.type = from)
+  object <- .check_object(object, assay.type = from)
 
   homosced_fun <- function(feature, formula, data) {
     result_row <- NULL
@@ -1290,7 +1292,7 @@ perform_kruskal_wallis <- function(object, formula_char, all_features = FALSE,
                                    assay.type = NULL) {
   log_text("Starting Kruskal-Wallis tests.")
   from <- .get_from_name(object, assay.type)
-  object <- notame:::.check_object(object, assay.type = from)
+  object <- .check_object(object, assay.type = from)
 
   kruskal_fun <- function(feature, formula, data) {
     result_row <- NULL
@@ -1351,7 +1353,7 @@ perform_oneway_anova <- function(object, formula_char, all_features = FALSE,
                                  assay.type = NULL, ...) {
   log_text("Starting ANOVA tests.")
   from <- .get_from_name(object, assay.type)
-  object <- notame:::.check_object(object, assay.type = from)
+  object <- .check_object(object, assay.type = from)
 
   anova_fun <- function(feature, formula, data) {
     result_row <- NULL
@@ -1423,7 +1425,7 @@ perform_t_test <- function(object, formula_char, is_paired = FALSE, id = NULL,
           "This function mimics this behavior, so the effect size is",
           " mean of first level minus mean of second level.")
   from <- .get_from_name(object, assay.type)
-  object <- notame:::.check_object(object, assay.type = from)
+  object <- .check_object(object, assay.type = from)
   assays(object) <- assays(object)[from]
   
   group <- unlist(strsplit(formula_char, " ~ "))[2]
@@ -1618,7 +1620,7 @@ perform_t_test <- function(object, formula_char, is_paired = FALSE, id = NULL,
 #'   is_paired = TRUE,
 #'   id = "Subject_ID")
 #' # Only two groups
-#' mann_whitney_results <- perform_non_parametric(notame::drop_qcs(toy_notame_set), 
+#' mw_results <-perform_non_parametric(notame::drop_qcs(toy_notame_set), 
 #'   formula_char = "Feature ~ Group")
 #'
 #' @seealso \code{\link[stats]{wilcox.test}}
@@ -1628,7 +1630,7 @@ perform_non_parametric <- function(object, formula_char, is_paired = FALSE,
                                    id = NULL, all_features = FALSE, 
                                    assay.type = NULL, ...) {
   from <- .get_from_name(object, assay.type)
-  object <- notame:::.check_object(object, assay.type = from)
+  object <- .check_object(object, assay.type = from)
   assays(object) <- assays(object)[from]
   group <- unlist(strsplit(formula_char, " ~ "))[2]
 

@@ -60,7 +60,7 @@ wilcoxon_signed_results <- perform_non_parametric(toy_notame_set,
   is_paired = TRUE,
   id = "Subject_ID")
 # Only two groups
-mann_whitney_results <- perform_non_parametric(notame::drop_qcs(toy_notame_set), 
+mw_results <-perform_non_parametric(notame::drop_qcs(toy_notame_set), 
   formula_char = "Feature ~ Group")
 
 }

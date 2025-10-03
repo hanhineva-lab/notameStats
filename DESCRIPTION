@@ -1,7 +1,7 @@
 Package: notameStats
 Type: Package
 Title: Workflow for non-targeted LC-MS metabolic profiling
-Version: 0.99.0
+Version: 0.99.1
 Authors@R: c(
     person("Anton", "Klåvus", role = c("aut", "cph"),
            comment = c(ORCID = "0000-0003-2612-0230")),
@@ -57,6 +57,6 @@ Suggests:
     testthat
 URL: https://github.com/hanhineva-lab/notameStats
 BugReports: https://github.com/hanhineva-lab/notameStats/issues
-RoxygenNote: 7.3.2
+RoxygenNote: 7.3.3
 VignetteBuilder: knitr
 Config/testthat/parallel: true

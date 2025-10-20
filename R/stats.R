@@ -606,7 +606,7 @@ perform_correlation_tests <- function(object, x, y = x, id = NULL,
                                design = "complete")$est[1]
     }
   })
-  matrix(result_row, nrow = 1, dimnames = list(feature, new_sdata$Sample_ID))
+  result_row
 }
 
 #' Area under curve
@@ -653,7 +653,8 @@ perform_auc <- function(object, time, subject, group, assay.type = NULL) {
   features <- assay(object, from)
 
   # Create new pheno data, only one row per subject and group
-  new_sdata <- data[, c(subject, group)] |>
+  new_sdata <- colData(object)[, c(subject, group)] |>
+    as.data.frame() |> 
     dplyr::distinct() |>
     tidyr::unite("Sample_ID", subject, group, remove = FALSE)
   # QC and Injection_order columns to pass validObject check
@@ -670,12 +671,8 @@ perform_auc <- function(object, time, subject, group, assay.type = NULL) {
     subject,
     group
   )
-  aucs <- data.frame(
-    "Feature_ID" = names(res),
-    do.call(rbind, res)
-  )
   # Construct new SummarizedExperiment object (with all modes together)
-  new_object <- SummarizedExperiment(assays = aucs, 
+  new_object <- SummarizedExperiment(assays = do.call(rbind, res), 
                                      rowData = rowData(object),
                                      colData = new_sdata) |>
     merge_notame_sets()

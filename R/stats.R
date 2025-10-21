@@ -149,45 +149,41 @@ summarize_results <- function(df, remove = c("Intercept", "CI95", "Std_error",
 }
 
 .calc_cohens_d <- function(feature, group1, group2) {
-  f1 <- group1[, feature]
-  f2 <- group2[, feature]
-  d <- data.frame(
-    Feature_ID = feature,
-    Cohen_d = (finite_mean(f2) - finite_mean(f1)) /
-      sqrt((finite_sd(f1)^2 + finite_sd(f2)^2) / 2),
-    stringsAsFactors = FALSE)
+  f1 <- feature[group1]
+  f2 <- feature[group2]
+  (finite_mean(f2) - finite_mean(f1)) /
+    sqrt((finite_sd(f1)^2 + finite_sd(f2)^2) / 2)
 }
 
 .help_cohens_d <- function(object, group, id, time, assay.type) {
-  data <- combined_data(object, assay.type)
-  features <- rownames(object)
-  group_levels <- levels(data[, group])
+  features <- assay(object, assay.type)
+  group_levels <- levels(object[[group]])
   time_levels <- NULL
 
   if (is.null(time)) {
-    group1 <- data[which(data[, group] == group_levels[1]), ]
-    group2 <- data[which(data[, group] == group_levels[2]), ]
+    group1 <- object[[group]] == group_levels[1]
+    group2 <- object[[group]] == group_levels[2]
     log_text(paste("Starting to compute Cohen's D between groups",
                    paste(rev(group_levels), collapse = " & ")))
   } else {
-    time_levels <- levels(data[, time])
+    time_levels <- levels(object[[time]])
     # Split to time points
-    time1 <- data[which(data[, time] == time_levels[1]), ]
-    time2 <- data[which(data[, time] == time_levels[2]), ]
-    common_ids <- intersect(time1[, id], time2[, id])
-    rownames(time1) <- time1[, id]
-    rownames(time2) <- time2[, id]
-    time1 <- time1[common_ids, ]
-    time2 <- time2[common_ids, ]
-    if (!identical(time1[, group], time2[, group])) {
+    time1_idx <- object[[time]] == time_levels[1]
+    time2_idx <- object[[time]] == time_levels[2]
+    id_col <- object[[id]]
+    common_ids <- intersect(id_col[time1_idx], id_col[time2_idx])
+    # Update index to contain only common ids
+    time1_idx <- time1_idx & id_col %in% common_ids
+    time2_idx <- time2_idx & id_col %in% common_ids
+    if (!identical(object[[group]][time1_idx], object[[group]][time2_idx])) {
       stop("Groups of subjects do not match between time points.", 
-           call. = FALSE)
+      call. = FALSE)
     }
     # Change between time points
-    new_data <- time2[, features] - time1[, features]
-    # Split to groups
-    group1 <- new_data[which(time1[, group] == levels(time1[, group])[1]), ]
-    group2 <- new_data[which(time1[, group] == levels(time1[, group])[2]), ]
+    features <- features[, time2_idx] - features[, time1_idx]
+    # Split to groups (assumes same order of subjects in both time points)
+    group1 <- object[[group]][time1_idx] == group_levels[1]
+    group2 <- object[[group]][time1_idx] == group_levels[2]
 
     log_text(paste("Starting to compute Cohen's D between groups",
                    paste(rev(group_levels), collapse = " & "),
@@ -195,10 +191,15 @@ summarize_results <- function(df, remove = c("Intercept", "CI95", "Std_error",
                    paste(rev(time_levels), collapse = " - ")))
   }
   
-  ds <- BiocParallel::bplapply(features, FUN = .calc_cohens_d,
+  # Convert features to a data frame for bplapply (uses df[idx] internally)
+  res <- BiocParallel::bplapply(as.data.frame(t(features)), FUN = .calc_cohens_d,
                                group1 = group1, group2 = group2)
   
-  ds <-  do.call(rbind, ds)
+  ds <-  data.frame(
+    "Feature_ID" = names(res),
+    "Cohen_d" = do.call(rbind, res),
+    stringsAsFactors = FALSE
+  )
 
   if (is.null(time_levels)) {
     colnames(ds)[2] <- 
@@ -322,13 +323,21 @@ cohens_d <- function(object, group, id = NULL,
   res
 }
 
-.calc_fold_change <- function(feature, group, data, groups) {
-  result_row <- rep(NA_real_, ncol(groups))
+.calc_fold_change <- function(feature, group) {
+  pairs <- utils::combn(levels(group), 2)
+  result_row <- rep(NA_real_, ncol(pairs))
+  names(result_row) <- apply(
+    pairs[2:1, , drop = FALSE],
+    2,
+    paste,
+    collapse = "_vs_"
+  ) |>
+    paste0("_FC")
   # Calculate fold changes
   tryCatch({
-    for (i in seq_len(ncol(groups))) {
-      group1 <- data[data[, group] == groups[1, i], feature]
-      group2 <- data[data[, group] == groups[2, i], feature]
+    for (i in seq_len(ncol(pairs))) {
+      group1 <- feature[group == pairs[1, i]]
+      group2 <- feature[group == pairs[2, i]]
       result_row[i] <- finite_mean(group2) / finite_mean(group1)
     }
   })
@@ -360,27 +369,20 @@ fold_change <- function(object, group, assay.type = NULL) {
   object <- .check_object(object, pheno_cols = group, 
                           assay.type = from)
   log_text("Starting to compute fold changes.")
-  data <- combined_data(object, from)
-  groups <- utils::combn(levels(data[, group]), 2)
-  features <- rownames(object)
-  # Calculate fold changes between groupings
-  results_df <- BiocParallel::bplapply(features, FUN = .calc_fold_change,
-                                       group, data, groups)
-  results_df <- do.call(rbind, results_df)
-  # Create comparison labels for result column names
-  comp_labels <- groups |>
-    t() |>
-    as.data.frame() |>
-    tidyr::unite("Comparison", "V2", "V1", sep = "_vs_")
-  comp_labels <- paste0(comp_labels[, 1], "_FC")
-  results_df <- data.frame(features, results_df, stringsAsFactors = FALSE)
-  colnames(results_df) <- c("Feature_ID", comp_labels)
-  rownames(results_df) <- results_df$Feature_ID
-
+  features <- assay(object, from)
+  # Convert features to a data frame for bplapply (uses df[idx] internally)
+  res <- BiocParallel::bplapply(
+    as.data.frame(t(features)), 
+    FUN = .calc_fold_change, 
+    object[[group]]
+  )
+  results_df <- data.frame(
+    "Feature_ID" = names(res),
+    do.call(rbind, res)
+  )
   log_text("Fold changes computed.")
-
-  # Order the columns accordingly
-  results_df[c("Feature_ID", comp_labels[order(comp_labels)])]
+  
+  results_df
 }
 
 
@@ -592,19 +594,19 @@ perform_correlation_tests <- function(object, x, y = x, id = NULL,
 }
 
 
-.calc_auc <- function(feature, data, pheno_data, time, subject, group) {
-  result_row <- rep(NA_real_, nrow(pheno_data))
+.calc_auc <- function(feature, sdata, new_sdata, time, subject, group) {
+  result_row <- rep(NA_real_, nrow(new_sdata))
   # Compute AUC for each subject in each group
   tryCatch({
-    for (j in seq_len(nrow(pheno_data))) {
-      subset_idx <- data[, subject] == pheno_data[j, subject] & 
-        data[, group] == pheno_data[j, group]
-      result_row[j] <- PK::auc(time = as.numeric(data[subset_idx, time]),
-                               conc = data[subset_idx, feature], 
+    for (j in seq_len(nrow(new_sdata))) {
+      subset_idx <- sdata[, subject] == new_sdata[j, subject] & 
+        sdata[, group] == new_sdata[j, group]
+      result_row[j] <- PK::auc(time = as.numeric(sdata[subset_idx, time]),
+                               conc = feature[subset_idx], 
                                design = "complete")$est[1]
     }
   })
-  matrix(result_row, nrow = 1, dimnames = list(feature, pheno_data$Sample_ID))
+  result_row
 }
 
 #' Area under curve
@@ -648,26 +650,31 @@ perform_auc <- function(object, time, subject, group, assay.type = NULL) {
   from <- .get_from_name(object, assay.type)
   object <- .check_object(object, pheno_factors = c(time, group),
                           pheno_chars = subject, assay.type = from)
-  data <- combined_data(object, from)
+  features <- assay(object, from)
 
   # Create new pheno data, only one row per subject and group
-  pheno_data <- data[, c(subject, group)] |>
+  new_sdata <- colData(object)[, c(subject, group)] |>
+    as.data.frame() |> 
     dplyr::distinct() |>
     tidyr::unite("Sample_ID", subject, group, remove = FALSE)
   # QC and Injection_order columns to pass validObject check
-  pheno_data$QC <- "Sample"
-  pheno_data$Injection_order <- seq_len(nrow(pheno_data))
-  rownames(pheno_data) <- pheno_data$Sample_ID
-
-  features <- rownames(object)
-  aucs <- BiocParallel::bplapply(features, .calc_auc, data, pheno_data,
-                                 time, subject, group)
-  aucs <- do.call(rbind, aucs)
-
+  new_sdata$QC <- "Sample"
+  new_sdata$Injection_order <- seq_len(nrow(new_sdata))
+  rownames(new_sdata) <- new_sdata$Sample_ID
+  # Convert features to a data frame for bplapply (uses df[idx] internally)
+  res <- BiocParallel::bplapply(
+    as.data.frame(t(features)), 
+    .calc_auc,
+    colData(object),
+    new_sdata,
+    time,
+    subject,
+    group
+  )
   # Construct new SummarizedExperiment object (with all modes together)
-  new_object <- SummarizedExperiment(assays = aucs, 
+  new_object <- SummarizedExperiment(assays = do.call(rbind, res), 
                                      rowData = rowData(object),
-                                     colData = pheno_data) |>
+                                     colData = new_sdata) |>
     merge_notame_sets()
 
   log_text("AUC computation finished")
@@ -692,9 +699,13 @@ perform_auc <- function(object, time, subject, group, assay.type = NULL) {
 
 # Helper function for filling missing rows in results files with NAs
 # Some statistical tests may fail for some features, due to e.g. missing values.
-.fill_results <- function(results_df, features) {
+.fill_results <- function(res, features) {
+  results_df <- dplyr::bind_rows(res)
+  failed <- sapply(res, is.null)
+  results_df$Feature_ID <- names(res)[!failed]
   # Add NA rows for features where the test failed
-  results_df <- results_df |> dplyr::select("Feature_ID", dplyr::everything())
+  results_df <- results_df |>
+      dplyr::select("Feature_ID", dplyr::everything())
   missing_features <- setdiff(features, results_df$Feature_ID)
   fill_nas <- matrix(NA, nrow = length(missing_features), 
                      ncol = ncol(results_df) - 1) |>
@@ -711,37 +722,29 @@ perform_auc <- function(object, time, subject, group, assay.type = NULL) {
 
 .help_perform_test <- function(feature, data, formula_char, result_fun, ...) {
   # Replace "Feature" with the current feature name
-  tmp_formula <- gsub("Feature", feature, formula_char)
+  data$Feature <- feature
   # Run test
-  result_row <- result_fun(feature = feature, 
-                           formula = stats::as.formula(tmp_formula), 
-                           data = data, ...)
-  # In case Feature is used as predictor, make the column names match
-  if (!is.null(result_row)) {
-    colnames(result_row) <- gsub(feature, "Feature", colnames(result_row))
-  }
-  result_row
+  result_fun(
+    formula = stats::as.formula(formula_char), 
+    data = data,
+    ...
+  )
 }
 
 
 # Helper function for running a variety of simple statistical tests
 .perform_test <- function(object, formula_char, result_fun, all_features, 
-                          fdr = TRUE, packages = NULL, assay.type, ...) {
-  data <- combined_data(object, assay.type)
-  features <- rownames(object)
-
-  results_df <- BiocParallel::bplapply(features, .help_perform_test, data,
+                          fdr = TRUE, assay.type, ...) {
+  features <- assay(object, assay.type)
+  # Convert features to a data frame for bplapply (uses df[idx] internally)                          
+  res <- BiocParallel::bplapply(as.data.frame(t(features)), .help_perform_test, colData(object),
                                        formula_char, result_fun, ...)
-                                       
-  results_df <- dplyr::bind_rows(results_df)
-
-  if (nrow(results_df) == 0) {
+  if (all(sapply(res, is.null))) {
     stop("All the tests failed.",
-         "To see the problems, run the tests without parallelization.", 
-         call. = FALSE)
+        "To see the problems, run the tests without parallelization.", 
+        call. = FALSE)
   }
-  # Rows full of NA for features where the test failed
-  results_df <- .fill_results(results_df, features)
+  results_df <- .fill_results(res, rownames(object))
 
   # FDR correction
   if (fdr) {
@@ -795,27 +798,24 @@ perform_lm <- function(object, formula_char, all_features = FALSE,
   from <- .get_from_name(object, assay.type)
   object <- .check_object(object, assay.type = from)
   
-  lm_fun <- function(feature, formula, data) {
+  lm_fun <- function(formula, data) {
     # Try to fit the linear model
     fit <- NULL
+    result_row <- NULL
     tryCatch(
       {
         fit <- stats::lm(formula, data = data, ...)
       },
-      error = function(e) message(feature, ": ", e$message))
-    if (is.null(fit) || sum(!is.na(data[, feature])) < 2) {
-      result_row <- NULL
-    } else {
+      error = function(e) message(e$message))
+    if (!is.null(fit) && sum(!is.na(data[["Feature"]])) >= 2) {
       # Gather coefficients and CIs to one data frame row
       result_row <- 
         tidyr::gather(broom::tidy(fit, conf.int = TRUE), 
                       "Metric", "Value", -"term") |>
         tidyr::unite("Column", "term", "Metric", sep = ".") |>
-        tidyr::spread("Column", "Value")
-      # Add R2 statistics and feature ID
-      result_row$R2 <- summary(fit)$r.squared
-      result_row$Adj_R2 <- summary(fit)$adj.r.squared
-      result_row$Feature_ID <- feature
+        tidyr::spread("Column", "Value") |> 
+        dplyr::mutate("R2" = summary(fit)$r.squared,
+                      "Adj_R2" = summary(fit)$adj.r.squared)
     }
     result_row
   }
@@ -870,7 +870,7 @@ perform_lm_anova <- function(object, formula_char, all_features = FALSE,
   object <- .check_object(object, assay.type = from)
   log_text("Starting ANOVA tests")
 
-  anova_fun <- function(feature, formula, data) {
+  anova_fun <- function(formula, data) {
     # Try to fit the linear model
     fit <- NULL
     tryCatch(
@@ -880,20 +880,17 @@ perform_lm_anova <- function(object, formula_char, all_features = FALSE,
                        lm_args))
         anova_res <- do.call(stats::anova, c(list(object = fit), anova_args))
       },
-      error = function(e) message(feature, ": ", e$message))
-    if (is.null(anova_res) || sum(!is.na(data[, feature])) < 2) {
-      result_row <- NULL
-    } else {
+      error = function(e) message(e$message))
+    result_row <- NULL
+    if (!is.null(anova_res) && sum(!is.na(data[["Feature"]])) >= 2) {
       effect_names <- c(names(fit$contrasts), "Residuals")
       anova_names <- c("Df", "Sum_Sq", "Mean_Sq", "F_value", "P")
-      result_row <- data.frame(Feature_ID = feature)
       for (i in seq_along(effect_names)) {
         for (j in seq_along(names(anova_res))) {
           name <- paste0(effect_names[i], "_", anova_names[j])
           result_row[name] <- anova_res[[j]][i]
         }
       }
-      result_row
     }
     result_row
   }
@@ -947,17 +944,16 @@ perform_logistic <- function(object, formula_char, all_features = FALSE,
   object <- .check_object(object, assay.type = from)
   log_text("Starting logistic regression")
 
-  logistic_fun <- function(feature, formula, data) {
+  logistic_fun <- function(formula, data) {
     # Try to fit the linear model
     fit <- NULL
     tryCatch(
       {
         fit <- stats::glm(formula, data = data, family = stats::binomial(), ...)
       },
-      error = function(e) message(feature, ": ", e$message))
-    if (is.null(fit) || sum(!is.na(data[, feature])) < 2) {
-      result_row <- NULL
-    } else {
+      error = function(e) message(e$message))
+    result_row <- NULL
+    if (!is.null(fit) && sum(!is.na(data[["Feature"]])) >= 2) {
       # Gather coefficients and CIs to one data frame row
       coefs <- summary(fit)$coefficients
       confints <- withCallingHandlers(
@@ -975,14 +971,13 @@ perform_logistic <- function(object, formula_char, all_features = FALSE,
         tidyr::gather("Metric", "Value", -"Variable") |>
         tidyr::unite("Column", "Variable", "Metric", sep = "_") |>
         tidyr::spread("Column", "Value")
-      result_row$Feature_ID <- feature
     }
     result_row
   }
 
   results_df <- .perform_test(object, formula_char, logistic_fun,
                               all_features, assay.type = from)
-
+  
   # Set a good column order
   variables <- gsub("_P$", "", 
                     colnames(results_df)[grep("P$", colnames(results_df))])
@@ -1000,9 +995,8 @@ perform_logistic <- function(object, formula_char, all_features = FALSE,
     results_df <- tibble::add_column(.data = results_df,
                                      OR = exp(estimate_values),
                                      .after = estimate_col)
-    estimate_idx <- which(colnames(results_df) == estimate_col)
-    colnames(results_df)[estimate_idx + 1] <- gsub("Estimate", "OR",
-                                                   estimate_col)
+    or_col <- which(colnames(results_df) == "OR")
+    colnames(results_df)[or_col] <- gsub("Estimate", "OR", estimate_col)
   }
 
   log_text("Logistic regression performed.")
@@ -1010,16 +1004,16 @@ perform_logistic <- function(object, formula_char, all_features = FALSE,
   results_df
 }
 
-.help_lmer <- function(feature, formula, data, ci_method, test_random, ...) {
+.help_lmer <- function(formula, data, ci_method, test_random, ...) {
   # Try to fit the linear model
   fit <- NULL
   # If fitting causes an error, a NULL row is returned
   result_row <- NULL
   tryCatch(
     {
-      fit <- lmerTest::lmer(formula, data = data, ...)
+      fit <- lmerTest::lmer(formula, data = as.data.frame(data), ...)
     },
-    error = function(e) message(feature, ": ", e$message))
+    error = function(e) message("error while fitting the model: ", e$message))
   if (!is.null(fit)) {
     # Extract model coefficients
     coefs <- summary(fit)$coefficients
@@ -1036,7 +1030,9 @@ perform_logistic <- function(object, formula_char, all_features = FALSE,
         confints <- data.frame(Variable = rownames(confints), confints,
                                stringsAsFactors = FALSE)
       },
-      error = function(e) message(feature, ": ", e$message)
+      error = function(e) {
+        message("error while computing confidence intervals: ", e$message)
+      }
     )
 
     # Gather coefficients and CIs to one data frame row
@@ -1056,10 +1052,8 @@ perform_logistic <- function(object, formula_char, all_features = FALSE,
         result_row$Marginal_R2 <- r2s[1]
         result_row$Conditional_R2 <- r2s[2]
       },
-      error = function(e) message(feature, ": ", e$message)
+      error = function(e) message("error while computing R2: ", e$message)
     )
-    # Add Feature ID
-    result_row$Feature_ID <- feature
   }
 
   #Add optional test results for the random effects
@@ -1086,7 +1080,9 @@ perform_logistic <- function(object, formula_char, all_features = FALSE,
           tidyr::spread("Column", "Value")
         result_row <- cbind(result_row, r_result_row)
       },
-      error = function(e) message(feature, ": ", e$message)
+      error = function(e) {
+        message("error while testing random effects: ", e$message)
+      }
     )
   }
 
@@ -1159,8 +1155,8 @@ perform_lmer <- function(object, formula_char, all_features = FALSE,
   from <- .get_from_name(object, assay.type)
   object <- .check_object(object, assay.type = from)
   results_df <- .perform_test(object, formula_char, .help_lmer, all_features,
-                              packages = "lmerTest", ci_method = ci_method,
-                              test_random = test_random, assay.type = from)
+                              ci_method = ci_method, test_random = test_random,
+                              assay.type = from)
 
   # Set a good column order
   fixed_effects <- 
@@ -1234,7 +1230,7 @@ perform_homoscedasticity_tests <- function(object, formula_char,
   from <- .get_from_name(object, assay.type)
   object <- .check_object(object, assay.type = from)
 
-  homosced_fun <- function(feature, formula, data) {
+  homosced_fun <- function(formula, data) {
     result_row <- NULL
     tryCatch(
       {
@@ -1242,13 +1238,12 @@ perform_homoscedasticity_tests <- function(object, formula_char,
         levene <- car::leveneTest(y = formula, data = data)
         fligner <- stats::fligner.test(formula = formula, data = data)
 
-        result_row <- data.frame(Feature_ID = feature, 
-                                 Bartlett_P = bartlett$p.value,
+        result_row <- data.frame(Bartlett_P = bartlett$p.value,
                                  Levene_P = levene$`Pr(>F)`[1],
                                  Fligner_P = fligner$p.value,
                                  stringsAsFactors = FALSE)
       },
-      error = function(e) message(feature, ": ", e$message))
+      error = function(e) message(e$message))
     result_row
   }
 
@@ -1294,16 +1289,15 @@ perform_kruskal_wallis <- function(object, formula_char, all_features = FALSE,
   from <- .get_from_name(object, assay.type)
   object <- .check_object(object, assay.type = from)
 
-  kruskal_fun <- function(feature, formula, data) {
+  kruskal_fun <- function(formula, data) {
     result_row <- NULL
     tryCatch(
       {
         kruskal <- stats::kruskal.test(formula = formula, data = data)
-        result_row <- data.frame(Feature_ID = feature,
-                                 Kruskal_P = kruskal$p.value,
+        result_row <- data.frame(Kruskal_P = kruskal$p.value,
                                  stringsAsFactors = FALSE)
       },
-      error = function(e) message(feature, ": ", e$message))
+      error = function(e) message(e$message))
 
     result_row
   }
@@ -1355,16 +1349,15 @@ perform_oneway_anova <- function(object, formula_char, all_features = FALSE,
   from <- .get_from_name(object, assay.type)
   object <- .check_object(object, assay.type = from)
 
-  anova_fun <- function(feature, formula, data) {
+  anova_fun <- function(formula, data) {
     result_row <- NULL
     tryCatch(
       {
         anova_res <- stats::oneway.test(formula = formula, data = data, ...)
-        result_row <- data.frame(Feature_ID = feature,
-                                 ANOVA_P = anova_res$p.value,
+        result_row <- data.frame(ANOVA_P = anova_res$p.value,
                                  stringsAsFactors = FALSE)
       },
-      error = function(e) message(feature, ": ", e$message))
+      error = function(e) message(e$message))
 
     result_row
   }
@@ -1487,8 +1480,8 @@ perform_t_test <- function(object, formula_char, is_paired = FALSE, id = NULL,
                                            conf_level)
     colnames(result_row)[-1] <- paste0(pair[1], "_vs_", pair[2], "_", 
                                    test, "_", colnames(result_row)[-1])
-    result_row
   }, error = function(e) message(fname, ": ", e$message))
+  result_row
 } 
 
 # Sets up subsets, calls .calc_simple_test and processes results for simple
@@ -1537,16 +1530,12 @@ perform_t_test <- function(object, formula_char, is_paired = FALSE, id = NULL,
     .calc_simple_test, data[, features], features, 
      MoreArgs = list(subset1, subset2, pair, test, is_paired, ...),
      SIMPLIFY = FALSE)
-                                          
-  results_df <- dplyr::bind_rows(result_rows)
   # Check that results actually contain results
-  if (nrow(results_df) == 0) {
-     stop("All the tests failed", call. = FALSE)
+  if (all(sapply(result_rows, is.null))) {
+    stop("All the tests failed", call. = FALSE)
   }
-  rownames(results_df) <- results_df$Feature_ID
-  
   # Rows full of NA for features where the test failed
-  results_df <- .fill_results(results_df, features)
+  results_df <- .fill_results(result_rows, features)
   # FDR correction
   if (all_features) {
     flags <- rep(NA_character_, nrow(results_df))

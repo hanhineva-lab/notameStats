@@ -650,7 +650,8 @@ test_that("Simple tests work in cases where alternative levels for confidence in
   assay(ex_set)[1, ] <- stats::runif(ncol(ex_set), 3000, 3000)
   res <- perform_non_parametric(drop_qcs(ex_set), 
                                 formula_char = "Feature ~ Time", 
-                                id = "Subject_ID",  is_paired = TRUE)
+                                id = "Subject_ID",  is_paired = TRUE,
+                                exact = FALSE)
   expect_true(any(grepl(c("UCI0"), colnames(res))))  
   
 })

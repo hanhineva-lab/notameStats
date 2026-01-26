@@ -385,63 +385,6 @@ fold_change <- function(object, group, assay.type = NULL) {
   results_df
 }
 
-
-.calc_correlation <- function(var_pair, data1, data2, id, ...) {
-  x_tmp <- var_pair["x", ]
-  y_tmp <- var_pair["y", ]
-  cor_tmp <- NULL
-  
-  tryCatch(
-    {
-      if (is.null(id)) {
-        cor_tmp <- stats::cor.test(data1[, x_tmp], data2[, y_tmp], ...)
-      } else {
-        id_tmp <- data1[, id]
-        cor_tmp <- data.frame(id_var = id_tmp, x_var = data1[, x_tmp],
-                              y_var = data2[, y_tmp])
-        cor_tmp <- rmcorr::rmcorr(participant = "id_var", measure1 = "x_var",
-                       measure2 = "y_var", dataset = cor_tmp)
-        cor_tmp <- list(estimate = cor_tmp$r, p.value = cor_tmp$p)
-      }
-    },
-    error = function(e) message(x_tmp, " vs", y_tmp, ": ", e$message)
-  )
-  if (is.null(cor_tmp)) {
-    cor_tmp <- list(estimate = NA, p.value = NA)
-  }
-  data.frame(X = x_tmp, Y = y_tmp, Correlation_coefficient = cor_tmp$estimate,
-             Correlation_P = cor_tmp$p.value, stringsAsFactors = FALSE)
-}
-
-
-.help_correlation_tests <- function(var_pairs, data1, data2, 
-                                    id, fdr, duplicates , ...) {
-  # Prepare pairs for bplapply iteration
-  var_pairs <- apply(var_pairs, 1, data.frame)
-  # Calculate correlations for each pair
-  cor_results <- BiocParallel::bplapply(var_pairs, .calc_correlation, 
-                                        data1, data2, id, ...)
-  cor_results <- do.call(rbind, cor_results)
-  
-  if (duplicates) {
-    cor_results_dup <- cor_results
-    cor_results_dup$X <- cor_results$Y
-    cor_results_dup$Y <- cor_results$X
-    # Remove possible duplicated correlations of a variable with itself
-    cor_results_dup <- dplyr::filter(cor_results_dup, .data$X != .data$Y)
-    cor_results <- rbind(cor_results, cor_results_dup)
-  }
-
-  # FDR correction
-  if (fdr) {
-    flags <- rep(NA_character_, nrow(cor_results))
-    cor_results <- .adjust_p_values(cor_results, flags)
-  }
-
-  rownames(cor_results) <- seq_len(nrow(cor_results))
-  cor_results
-}
-
 .calc_auc <- function(feature, sdata, new_sdata, time, subject, group) {
   result_row <- rep(NA_real_, nrow(new_sdata))
   # Compute AUC for each subject in each group

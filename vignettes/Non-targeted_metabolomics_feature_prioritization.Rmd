@@ -115,6 +115,7 @@ lm_results <- perform_lm(toy_notame_set,
 Most of the functions allow you to pass extra arguments to the underlying 
 functions performing the actual tests, so you can set custom contrasts etc.
 
+We also include area under curve computation (`perform_auc()`) to 
 Functions not using the formula interface include correlation tests between 
 molecular features and/or sample information variable 
 (`perform_correlation_tests()`) and area under curve computation 

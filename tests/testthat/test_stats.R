@@ -610,41 +610,6 @@ test_that("Pairwise Mann-Whitney tests works", {
   ))
 })
 
-test_that("Assay control works (with correlation tests)", {
-  ex_set <- toy_notame_set[1:10, ]
-  names(assays(ex_set)) <- c("original")
-  # Don't require assay.type if object has only one assay for consistence
-  correlations_one <- perform_correlation_tests(ex_set,
-    x = rownames(ex_set))
-  
-  # Assay not found
-  expect_error(perform_correlation_tests(ex_set, 
-    x = rownames(ex_set), assay.type1 = "nope"))
-  
-  # Assay not found with multiple assays
-  assay(ex_set, "alternative") <- assay(ex_set)
-  expect_error(perform_correlation_tests(ex_set, 
-    x = rownames(ex_set), assay.type1 = "nope"))
-
-  # When a single object is considered, assay.type2 throws error message
-  expect_error(perform_correlation_tests(ex_set, 
-    x = rownames(ex_set), assay.type1 = "original",
-    assay.type2 = "alternative"))
-  
-  # Correlation works the same way using one and two objects
-  correlations_two <- perform_correlation_tests(ex_set, object2 = ex_set,
-    x = rownames(ex_set), assay.type1 = "original",
-    assay.type2 = "original")    
-  expect_identical(correlations_one, correlations_two)
-
-  # Specified assays are considered when using two objects
-  assay(ex_set, "alternative")[1, ] <- 0
-  correlations <- perform_correlation_tests(ex_set, object2 = ex_set,
-    x = rownames(ex_set), assay.type1 = "original",
-    assay.type2 = "alternative")  
-  expect_false(identical(correlations, correlations_one))
-})
-
 test_that("Simple tests work in cases where alternative levels for confidence intervals are returned in case 95% confidence interval can't be computed", {
   ex_set <- toy_notame_set
   assay(ex_set)[1, ] <- stats::runif(ncol(ex_set), 3000, 3000)

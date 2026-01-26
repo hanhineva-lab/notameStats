@@ -398,9 +398,9 @@ fold_change <- function(object, group, assay.type = NULL) {
       } else {
         id_tmp <- data1[, id]
         cor_tmp <- data.frame(id_var = id_tmp, x_var = data1[, x_tmp],
-                              y_var = data2[, y_tmp]) |>
-        rmcorr::rmcorr(participant = .$id_var, measure1 = .$x_var,
-                       measure2 = .$y_var, dataset = .)
+                              y_var = data2[, y_tmp])
+        cor_tmp <- rmcorr::rmcorr(participant = "id_var", measure1 = "x_var",
+                       measure2 = "y_var", dataset = cor_tmp)
         cor_tmp <- list(estimate = cor_tmp$r, p.value = cor_tmp$p)
       }
     },
@@ -1062,11 +1062,11 @@ perform_logistic <- function(object, formula_char, all_features = FALSE,
       {
         r_tests <- as.data.frame(lmerTest::ranova(fit))[-1, c(4, 6)]
         r_tests$Variable <- rownames(r_tests) |>
-          gsub("[(]1 [|] ", "", .) |>
-          gsub("[)]", "", .)
+          gsub("[(]1 [|] ", "", x = _) |>
+          gsub("[)]", "", x = _)
         # Get confidence intervals for the SD of the random effects
         confints$Variable <- confints$Variable |>
-          gsub("sd_[(]Intercept[)][|]", "", .)
+          gsub("sd_[(]Intercept[)][|]", "", x = _)
         # Get standard deviations of the random effects
         r_variances <- as.data.frame(summary(fit)$varcor)[c("grp", "sdcor")]
         # Join all the information together
@@ -1526,7 +1526,7 @@ perform_t_test <- function(object, formula_char, is_paired = FALSE, id = NULL,
   }
   
   # Calculate paired or unpaired test for the subsets
-  result_rows <- BiocParallel::bpmapply(
+  result_rows <- mapply(
     .calc_simple_test, data[, features], features, 
      MoreArgs = list(subset1, subset2, pair, test, is_paired, ...),
      SIMPLIFY = FALSE)

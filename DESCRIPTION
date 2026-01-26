@@ -54,7 +54,6 @@ Suggests:
     PERMANOVA,
     PK,
     randomForest,
-    rmcorr,
     testthat
 URL: https://github.com/hanhineva-lab/notameStats
 BugReports: https://github.com/hanhineva-lab/notameStats/issues

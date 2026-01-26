@@ -112,14 +112,41 @@ lm_results <- perform_lm(toy_notame_set,
 
 ```
 
-Most of the functions allow you to pass extra arguments to the underlying 
-functions performing the actual tests, so you can set custom contrasts etc.
+We also include area under curve computation (`perform_auc()`) for performing 
+analyses based on cumulative exposure in longitudinal studies. For correlation, 
+we prefer to use `mia::getCrossAssociation()` as a general solution
+and ComplexHeatmap package for visualizing results. Below we demonstrate 
+feature-feature correlation with a custom correlation function for dependent 
+samples.
 
-We also include area under curve computation (`perform_auc()`) to 
-Functions not using the formula interface include correlation tests between 
-molecular features and/or sample information variable 
-(`perform_correlation_tests()`) and area under curve computation 
-(`perform_auc()`).
+```{r, eval = FALSE}
+# Define custom function for cross-association
+rmcorr_fun <- function(pair, method) {
+res <- rmcorr::rmcorr(
+  as.factor(toy_notame_set$Subject_ID), pair[1, ], pair[2, ], dataset = NULL)
+  res$r
+}
+
+# Get cross-association (rmcorr)
+names(assays(toy_notame_set))[[1]] <- "abund"
+rmcorr_res <- mia::getCrossAssociation(toy_notame_set, assay.type1 = "abund", 
+    assay.type2 = "abund", association.fun = rmcorr_fun, mode = "matrix")
+
+# Add mock compund classes for example
+rowData(toy_notame_set)$compound_class <- rep(c(
+    "Lipid", "Amino acid", "Carbohydrate"
+  ), length.out = nrow(toy_notame_set))
+
+# Plot results
+ComplexHeatmap::Heatmap(rmcorr_res,
+    # Print values to cells,
+    top_annotation = HeatmapAnnotation(
+        class = rowData(toy_notame_set)$compound_class),
+    heatmap_legend_param = list(
+        title = "correlation", legend_height = unit(5, "cm")),
+    column_names_rot = 45)
+
+```
 
 # Multivariate analysis
 

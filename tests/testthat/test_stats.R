@@ -537,7 +537,8 @@ test_that("Mann-Whitney U-tests work", {
   ))
 
   mw_res <- suppressWarnings({
-    perform_non_parametric(object, formula_char = "Feature ~ Group")
+    perform_non_parametric(object, formula_char = "Feature ~ Group",
+    exact = FALSE)
   })
 
   expect_identical(colnames(mw_res), cols)
@@ -562,7 +563,8 @@ test_that("Wilcoxon signed rank tests work", {
 
   wil_res <- perform_non_parametric(object, 
                                     formula_char = "Feature ~ Time",
-                                    is_paired = TRUE, id = "Subject_ID")
+                                    is_paired = TRUE, id = "Subject_ID",
+                                    exact = FALSE)
 
   expect_identical(colnames(wil_res), cols)
   expect_identical(unname(sign(median_diffs)),
@@ -583,7 +585,7 @@ test_that("Pairwise Mann-Whitney tests works", {
     })
 
   pwnp_res <- suppressWarnings(
-    perform_non_parametric(object, formula_char = "Feature ~ Time"))
+    perform_non_parametric(object, formula_char = "Feature ~ Time", exact = FALSE))
 
   expect_identical(rownames(pwnp_res), rownames(drop_qcs(toy_notame_set)))
   prefixes <- paste0(c("1_vs_2_", "1_vs_3_", "2_vs_3_"), "Mann_Whitney_")
@@ -595,14 +597,14 @@ test_that("Pairwise Mann-Whitney tests works", {
   # These should be identical as no paired mode
   colData(object)$Subject_ID <- factor(rep(1:12, 2))
   expect_identical(
-    suppressWarnings(perform_non_parametric(object, 
+    suppressWarnings(perform_non_parametric(object, exact = FALSE,
                                             formula_char = "Feature ~ Time")), 
     pwnp_res)
   # These shouldn't match cause paired mode
   # In this case 4 pairs in each
   #object <- drop_qcs(mark_nas(toy_notame_set, value = 0))
   expect_failure(expect_identical(
-    suppressWarnings(perform_non_parametric(object,
+    suppressWarnings(perform_non_parametric(object, exact = FALSE,
                                             formula_char = "Feature ~ Time", 
                                             id = "Subject_ID",
                                             is_paired = TRUE)),

@@ -101,7 +101,7 @@ ex_set$Injection_order <- as.numeric(ex_set$Injection_order)
 pls_model <- muvr_analysis(ex_set, 
   y = "Injection_order", nRep = 2, method = "PLS")
 
-# RF classification with covariate and repeated measures (not longitudinal)
+# RF classification with covariate and repeated measures (not multilevel)
 rf_model <- muvr_analysis(ex_set, y = "Group", id = "Subject_ID", 
   nRep = 2, method = "RF", covariates = "Injection_order")
 

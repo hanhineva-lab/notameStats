@@ -3,7 +3,8 @@
 #' @importFrom dplyr .data
 #' @import methods
 #' @importFrom notame drop_flagged drop_qcs combined_data flag merge_notame_sets
-#' mark_nas "flag<-" flag_quality log_text init_log finish_log citations
+#' @importFrom notame mark_nas "flag<-" flag_quality
+#' @importFrom notame log_text init_log finish_log citations
 #' @import SummarizedExperiment
 NULL
 

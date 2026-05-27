@@ -14,6 +14,7 @@
 #' object
 #' @param y character, column name of pheno data giving the dependent variable 
 #' of the model
+#' 
 #' @param all_features logical, should all features be included in the model? 
 #' if FALSE, flagged features are left out
 #' @param covariates character, column names of pheno data
@@ -130,8 +131,9 @@ importance_rf <- function(rf) {
 #' this for faster testing.
 #' @param all_features logical, should all features be included in the model? 
 #' if FALSE, flagged features are left out
-#' @param covariates character, column names of pheno datato use as covariates 
+#' @param covariates character, column names of pheno datato used as covariates 
 #' in the model, in addition to molecular features
+#' @param multilevel character, colData column(s) used for multilevel modelling
 #' @param n_features the number of features to try for each component
 #' @param assay.type character, assay to be used in case of multiple assays
 #' @param ... any parameters passed to 
@@ -140,6 +142,14 @@ importance_rf <- function(rf) {
 #' @return An object of class "mixo_pls" or "mixo_spls". For the optimized and 
 #' sparse models, a list with object of class "mixo_plsda" and a performance 
 #' plot.
+#' 
+#' @details For one-factor decomposition, pass column of individual 
+#' identifiers. For two-factor decomposition, pass column of individual 
+#' identifiers followed by two factor columns. For repeated measures without 
+#' multilevel analysis, one can manually supply `folds` and use leave-one-out 
+#' cross-validation (to work around behavior where supplying `folds` argument 
+#' in repeated cross-validation defeats the purpose of `nrepeat`).
+
 #'
 #' @examples
 #' data(toy_notame_set, package = "notame")
@@ -158,7 +168,10 @@ importance_rf <- function(rf) {
 #' 
 #' # Proportion of variance explained
 #' pls_res$prop_expl_var$X[seq_len(2)] |> round(digits = 3) * 100
-#' 
+#'
+#' # PLS with paired data
+#' pls_res <- mixomics_pls(toy_notame_set, y = "Injection_order",
+#'   multilevel =  "Subject_ID", ncomp = 3)
 #' @name pls
 #' @seealso \code{\link[mixOmics]{pls}}, \code{\link[mixOmics]{perf}},
 #' \code{\link[mixOmics]{spls}}, \code{\link[mixOmics]{tune.spls}}
@@ -168,7 +181,7 @@ NULL
 #' @export
 mixomics_pls <- function(object, y, ncomp,
                          all_features = FALSE, covariates = NULL, 
-                         assay.type = NULL, ...) {
+                         multilevel = NULL, assay.type = NULL, ...) {
   if (!requireNamespace("mixOmics", quietly = TRUE)) {
     stop("Package \"mixOmics\" needed for this function to work.",
          " Please install it.", call. = FALSE)
@@ -178,14 +191,19 @@ mixomics_pls <- function(object, y, ncomp,
 
   object <- drop_flagged(object, all_features = all_features)
   from <- .get_from_name(object, assay.type)
-  object <- .check_object(object, pheno_cols = c(y, covariates), 
+  object <- .check_object(object, pheno_cols = c(y, covariates, multilevel), 
                          assay.type = from)
 
   predictors <- .get_x(object, covariates, from)
   outcome <- colData(object)[y]
-
+  multilevel <- if (!is.null(multilevel)) {
+    colData(object)[, multilevel]
+  } else {
+  NULL
+  }
   log_text("Fitting PLS")
-  pls_model <- mixOmics::pls(predictors, outcome, ncomp = ncomp, ...)
+  pls_model <- mixOmics::pls(predictors, outcome, ncomp = ncomp,
+                             multilevel = multilevel, ...)
 
   pls_model
 }
@@ -196,20 +214,11 @@ mixomics_pls <- function(object, y, ncomp,
 mixomics_pls_optimize <- function(object, y, ncomp, plot_perf = FALSE, 
                                   folds = 5, nrepeat = 50,
                                   all_features = FALSE, covariates = NULL, 
-                                  assay.type = NULL, ...) {
-  if (!requireNamespace("mixOmics", quietly = TRUE)) {
-    stop("Package \"mixOmics\" needed for this function to work.", 
-         " Please install it.", call. = FALSE)
-  }
-  
-  .add_citation("mixOmics package was used to fit PLS models:",
-                citation("mixOmics"))
-  from <- .get_from_name(object, assay.type)
-  object <- .check_object(object, pheno_cols = c(y, covariates), 
-                         assay.type = from)
+                                  multilevel = NULL, assay.type = NULL, ...) {
+  # Fit PLS model
   pls_res <- mixomics_pls(object = object, y = y, ncomp = ncomp, 
-                          all_features = all_features,
-                          covariates = covariates, assay.type = from, ...)
+                          all_features = all_features, covariates = covariates, 
+                          multilevel = multilevel, assay.type = assay.type, ...)
     
   log_text("Evaluating PLS performance")
   perf_pls <- mixOmics::perf(pls_res, validation = "Mfold", 
@@ -226,7 +235,10 @@ mixomics_pls_optimize <- function(object, y, ncomp, plot_perf = FALSE,
 
   pls_final <- mixomics_pls(object = object, y = y, ncomp = ncomp_opt,
                             all_features = all_features,
-                            covariates = covariates, assay.type = from, ...)
+                            covariates = covariates, 
+                            multilevel = multilevel,
+                            assay.type = assay.type, ...)
+  
   if (plot_perf) {
     p <- plot(perf_pls, measure = "MSEP")
     return(list(model = pls_final, plot_perf = p))
@@ -242,24 +254,31 @@ mixomics_spls_optimize <- function(object, y, ncomp, plot_perf = FALSE,
                                    c(seq_len(10), seq(20, 300, 10)), 
                                    folds = 5, nrepeat = 50,
                                    all_features = FALSE, covariates = NULL,
-                                   assay.type = NULL, ...) {
+                                   multilevel = NULL, assay.type = NULL, ...) {
   if (!requireNamespace("mixOmics", quietly = TRUE)) {
     stop("Package \"mixOmics\" needed for this function to work.",
          " Please install it.", call. = FALSE)
   }
   .add_citation("mixOmics package was used to fit PLS models:",
                 citation("mixOmics"))
+  
   object <- drop_flagged(object, all_features = all_features)
   from <- .get_from_name(object, assay.type)
-  object <- .check_object(object, pheno_cols = c(y, covariates), 
-                         assay.type = from)
+  object <- .check_object(object, pheno_cols = c(y, covariates, multilevel), 
+                          assay.type = from)
 
   predictors <- .get_x(object, covariates, from)
   outcome <- colData(object)[y]
+  multilevel <- if (!is.null(multilevel)) {
+    colData(object)[, multilevel]
+  } else {
+  NULL
+  }
 
   # Test different number of components and features with cross validation
   log_text("Tuning sPLS")
   tuned_spls <- mixOmics::tune.spls(predictors, outcome, ncomp = ncomp,
+                                    multilevel = multilevel,
                                     test.keepX = n_features,
                                     validation = "Mfold", folds = folds,
                                     nrepeat = nrepeat, measure = "MAE")
@@ -271,7 +290,8 @@ mixomics_spls_optimize <- function(object, y, ncomp, plot_perf = FALSE,
                  "components with the numbers of features:",
                  paste(keep_x, collapse = ", ")))
   # Fit the final model
-  spls_final <- mixOmics::spls(predictors, outcome, ncomp = ncomp_opt, 
+  spls_final <- mixOmics::spls(predictors, outcome, ncomp = ncomp_opt,
+                               multilevel = multilevel,
                                keepX = keep_x, ...)
 
   if (plot_perf) {
@@ -311,6 +331,7 @@ mixomics_spls_optimize <- function(object, y, ncomp, plot_perf = FALSE,
 #' if FALSE, flagged features are left out
 #' @param covariates character, column names of pheno data to use as covariates 
 #' in the model, in addition to molecular features
+#' @param multilevel character, colData column(s) used for multilevel modelling
 #' @param assay.type character, assay to be used in case of multiple assays
 #' @param ... any parameters passed to 
 #' \code{\link[mixOmics]{plsda}}
@@ -318,6 +339,13 @@ mixomics_spls_optimize <- function(object, y, ncomp, plot_perf = FALSE,
 #' @return An object of class "mixo_plsda" or for the optimized and sparse 
 #' models, a list with object of class "mixo_plsda" and a performance plot.
 #'
+#' @details For one-factor decomposition, pass column of individual 
+#' identifiers. For two-factor decomposition, pass column of individual 
+#' identifiers followed by two factor columns. For repeated measures without 
+#' multilevel analysis, one can manually supply `folds` and use leave-one-out 
+#' cross-validation (to work around behavior where supplying `folds` argument 
+#' in repeated cross-validation defeats the purpose of `nrepeat`).
+#' 
 #' @examples
 #' data(toy_notame_set, package = "notame")
 #' noqc <- notame::drop_qcs(toy_notame_set)
@@ -345,7 +373,9 @@ mixomics_spls_optimize <- function(object, y, ncomp, plot_perf = FALSE,
 #'   comp = seq_len(2), group = notame::drop_qcs(toy_notame_set)$Group, 
 #'   ind.names = FALSE, 
 #'   title = "prediction areas", legend = TRUE, background = background)
-#' 
+#' # PLS-DA with repeated measures
+#' plsda_res <- mixomics_pls(toy_notame_set, y = "Injection_order", 
+#' multilevel = "Subject_ID", ncomp = 3)
 #' @name pls_da
 #' @seealso \code{\link[mixOmics]{plsda}}, \code{\link[mixOmics]{perf}},
 #' \code{\link[mixOmics]{splsda}}, \code{\link[mixOmics]{tune.splsda}}
@@ -355,20 +385,26 @@ NULL
 #' @export
 mixomics_plsda <- function(object, y, ncomp, 
                            all_features = FALSE, covariates = NULL,
-                           assay.type = NULL, ...) {
+                           multilevel = NULL, assay.type = NULL, ...) {
   if (!requireNamespace("mixOmics", quietly = TRUE)) {
     stop("Package \"mixOmics\" needed for this function to work.",
          "Please install it.", call. = FALSE)
   }
   .add_citation("mixOmics package was used to fit PLS models:",
                 citation("mixOmics"))
+
   object <- drop_flagged(object, all_features = all_features)
   from <- .get_from_name(object, assay.type)  
-  object <- .check_object(object, pheno_cols = c(y, covariates), 
+  object <- .check_object(object, pheno_cols = c(y, covariates, multilevel), 
                           assay.type = from)
 
   predictors <- .get_x(object, covariates, from)
   outcome <- colData(object)[, y]
+  multilevel <- if (!is.null(multilevel)) {
+    colData(object)[, multilevel]
+  } else {
+  NULL
+  }  
   # outcome needs to be a factor, this ensures the levels are right
   if (!is(outcome, "factor")) {
     outcome <- as.factor(outcome)
@@ -376,7 +412,8 @@ mixomics_plsda <- function(object, y, ncomp,
             paste(levels(outcome), collapse = ", "))
   }
   log_text("Fitting PLS-DA")
-  plsda_model <- mixOmics::plsda(predictors, outcome, ncomp = ncomp, ...)
+  plsda_model <- mixOmics::plsda(predictors, outcome, ncomp = ncomp,
+                                 multilevel = multilevel, ...)
 
   plsda_model
 }
@@ -387,22 +424,13 @@ mixomics_plsda <- function(object, y, ncomp,
 mixomics_plsda_optimize <- function(object, y, ncomp, plot_perf = FALSE,
                                     folds = 5, nrepeat = 50,
                                     all_features = FALSE, covariates = NULL, 
-                                    assay.type = NULL, ...) {
-  if (!requireNamespace("mixOmics", quietly = TRUE)) {
-    stop("Package \"mixOmics\" needed for this function to work.", 
-         " Please install it.", call. = FALSE)
-  }
-  .add_citation("mixOmics package was used to fit PLS models:",
-                citation("mixOmics"))
-  object <- drop_flagged(object, all_features = all_features)
-  from <- .get_from_name(object, assay.type)  
-  object <- .check_object(object, pheno_cols = c(y, covariates), 
-                          assay.type = from)
+                                    multilevel = NULL, assay.type = NULL, ...) {
 
   plsda_res <- mixomics_plsda(object = object, y = y, ncomp = ncomp,
                               all_features = all_features,
-                              covariates = covariates, 
-                              assay.type = from, ...)
+                              covariates = covariates,
+                              multilevel = multilevel,
+                              assay.type = assay.type, ...)
 
   log_text("Evaluating PLS-DA performance")
   perf_plsda <- mixOmics::perf(plsda_res, validation = "Mfold", folds = folds,
@@ -419,7 +447,9 @@ mixomics_plsda_optimize <- function(object, y, ncomp, plot_perf = FALSE,
 
   plsda_final <- mixomics_plsda(object = object, y = y, ncomp = ncomp_opt, 
                                 all_features = all_features,
-                                covariates = covariates, assay.type = from, ...)
+                                covariates = covariates,
+                                multilevel = multilevel,
+                                assay.type = assay.type, ...)
 
   if (plot_perf) {
     plot(perf_plsda, col = mixOmics::color.mixo(seq_len(3)), 
@@ -440,7 +470,7 @@ mixomics_splsda_optimize <- function(object, y, ncomp, dist, plot_perf = FALSE,
                                                     seq(20, 300, 10)),
                                      folds = 5, nrepeat = 50,
                                      all_features = FALSE, covariates = NULL, 
-                                     assay.type = NULL, ...) {
+                                     multilevel = NULL, assay.type = NULL,...) {
   if (!requireNamespace("mixOmics", quietly = TRUE)) {
     stop("Package \"mixOmics\" needed for this function to work.",
          " Please install it.", call. = FALSE)
@@ -449,11 +479,16 @@ mixomics_splsda_optimize <- function(object, y, ncomp, dist, plot_perf = FALSE,
                 citation("mixOmics"))
   object <- drop_flagged(object, all_features = all_features)
   from <- .get_from_name(object, assay.type)
-  object <- .check_object(object,  pheno_cols = c(y, covariates),
+  object <- .check_object(object, pheno_cols = c(y, covariates),
                          assay.type = from)
 
   predictors <- .get_x(object, covariates, from)
   outcome <- colData(object)[, y]
+  multilevel <- if (!is.null(multilevel)) {
+    colData(object)[, multilevel]
+  } else {
+  NULL
+  }  
   # outcome needs to be a factor, this ensures the levels are right
   if (!is(outcome, "factor")) {
     outcome <- as.factor(outcome)
@@ -463,6 +498,7 @@ mixomics_splsda_optimize <- function(object, y, ncomp, dist, plot_perf = FALSE,
   # Test different components and numbers of features with cross validation
   log_text("Tuning sPLS-DA")
   tuned_splsda <- mixOmics::tune.splsda(predictors, outcome, ncomp = ncomp,
+                                        multilevel = multilevel,
                                         validation = "Mfold", folds = folds,
                                         dist = dist, measure = "BER", 
                                         nrepeat = nrepeat,
@@ -476,7 +512,8 @@ mixomics_splsda_optimize <- function(object, y, ncomp, dist, plot_perf = FALSE,
                  paste(keep_x, collapse = ", ")))
   # Fit the final model
   splsda_final <- mixOmics::splsda(predictors, outcome, ncomp = ncomp_opt,
-                                   keepX = keep_x)
+                                   keepX = keep_x,
+                                   multilevel = multilevel)
   if (plot_perf) {
     # Plot error rate of different components as a function of n features
     p <- plot(tuned_splsda)
@@ -552,7 +589,7 @@ mixomics_splsda_optimize <- function(object, y, ncomp, dist, plot_perf = FALSE,
 #' pls_model <- muvr_analysis(ex_set, 
 #'   y = "Injection_order", nRep = 2, method = "PLS")
 #'
-#' # RF classification with covariate and repeated measures (not longitudinal)
+#' # RF classification with covariate and repeated measures (not multilevel)
 #' rf_model <- muvr_analysis(ex_set, y = "Group", id = "Subject_ID", 
 #'   nRep = 2, method = "RF", covariates = "Injection_order")
 #'

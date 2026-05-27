@@ -13,6 +13,7 @@ mixomics_plsda(
   ncomp,
   all_features = FALSE,
   covariates = NULL,
+  multilevel = NULL,
   assay.type = NULL,
   ...
 )
@@ -26,6 +27,7 @@ mixomics_plsda_optimize(
   nrepeat = 50,
   all_features = FALSE,
   covariates = NULL,
+  multilevel = NULL,
   assay.type = NULL,
   ...
 )
@@ -41,6 +43,7 @@ mixomics_splsda_optimize(
   nrepeat = 50,
   all_features = FALSE,
   covariates = NULL,
+  multilevel = NULL,
   assay.type = NULL,
   ...
 )
@@ -57,6 +60,8 @@ if FALSE, flagged features are left out}
 
 \item{covariates}{character, column names of pheno data to use as covariates 
 in the model, in addition to molecular features}
+
+\item{multilevel}{character, colData column(s) used for multilevel modelling}
 
 \item{assay.type}{character, assay to be used in case of multiple assays}
 
@@ -93,6 +98,14 @@ choose the one with minimal balanced error rate}
 of components and features, choose the one with minimal balanced error rate}
 }
 }
+\details{
+For one-factor decomposition, pass column of individual 
+identifiers. For two-factor decomposition, pass column of individual 
+identifiers followed by two factor columns. For repeated measures without 
+multilevel analysis, one can manually supply `folds` and use leave-one-out 
+cross-validation (to work around behavior where supplying `folds` argument 
+in repeated cross-validation defeats the purpose of `nrepeat`).
+}
 \examples{
 data(toy_notame_set, package = "notame")
 noqc <- notame::drop_qcs(toy_notame_set)
@@ -120,7 +133,9 @@ mixOmics::plotIndiv(plsda_res,
   comp = seq_len(2), group = notame::drop_qcs(toy_notame_set)$Group, 
   ind.names = FALSE, 
   title = "prediction areas", legend = TRUE, background = background)
-
+# PLS-DA with repeated measures
+plsda_res <- mixomics_pls(toy_notame_set, y = "Injection_order", 
+multilevel = "Subject_ID", ncomp = 3)
 }
 \seealso{
 \code{\link[mixOmics]{plsda}}, \code{\link[mixOmics]{perf}},
